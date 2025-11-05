@@ -40,13 +40,15 @@ ENV NEXT_TELEMETRY_DISABLED 1
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-# 复制必要文件
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
+# 创建必要的目录
+RUN mkdir -p ./public
 
-# 设置所有权
-RUN chown -R nextjs:nodejs /app
+# 复制构建结果
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+# 复制 public 目录（如果存在，使用通配符处理空目录）
+COPY --from=builder --chown=nextjs:nodejs /app/public* ./public/ || true
 
 USER nextjs
 
