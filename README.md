@@ -7,9 +7,9 @@
 - **一键执行**：生成的 Python 脚本直接在隔离沙箱中同步运行，产出标准输出、错误日志与图像附件。
 - **数据工作台**：集成数据上传、模型选择、代码编辑、执行结果浏览及模型对话协作于一体。
 - **历史留存**：所有任务自动归档，可随时查看 prompt、代码、执行日志与生成的附件。
-- **多用户隔离**：后端以 `X-User-Id` 头区分用户，上传文件、执行产物、任务记录与会话均按用户单独存储，前端可切换当前用户 ID。
+- **多用户隔离**：后端以 `X-User-Id` 头区分用户，上传文件、执行产物、任务记录与会话均按用户单独存储。
 - **凭证集中管理**：每个账户的 API Key、Base URL 与模型设置都会加密保存到后端，可在任意设备登录后自动同步。
-- **双模式分析**：可选择“分析策略”（生成详细方案）或“数据分析”（直接执行统计/可视化），提示词会随模式自动调整。
+- **双模式分析**：可选择"分析策略"（生成详细方案）或"数据分析"（直接执行统计/可视化），提示词会随模式自动调整。
 - **账户体系**：提供注册、登录与退出功能，所有 API 现需携带 Bearer Token 访问，确保多用户场景下的权限隔离。
 
 ## 目录结构
@@ -30,144 +30,606 @@ llm-data-lab/
 └── notebooks/            # 示例分析或研究记录
 ```
 
-## 快速启动
+---
 
-### 🐳 Docker 部署（推荐）
+## 🚀 快速部署
 
-使用 Docker Compose 一键启动所有服务：
-
-```bash
-# 1. 配置环境变量
-cp backend/.env.example backend/.env
-# 编辑 .env 文件，填入 API Keys
-
-# 2. 启动服务
-# 🌍 国外服务器：
-docker-compose up -d
-
-# 🇨🇳 中国服务器（使用腾讯云镜像加速）：
-docker-compose -f docker-compose.yml -f docker-compose.cn.yml up -d
-
-# 3. 访问应用
-# 前端：http://localhost:3000
-# 后端：http://localhost:8000/docs
-```
-
-> 💡 **部署建议**：
-> - 🇨🇳 中国服务器部署：使用 `bash deploy-server.sh cn` 自动配置镜像加速
-> - 🌍 国外服务器部署：使用 `bash deploy-server.sh` 
-> - 📖 详细配置请参考 [镜像源配置指南](./DEPLOY_MIRRORS.md)
-
-详细的 Docker 部署指南请查看 [DOCKER_DEPLOY.md](DOCKER_DEPLOY.md)。
-
-### 💻 本地开发部署
+### 本地开发
 
 #### 后端
 ```bash
 cd backend
 python3 -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -e .
 cp .env.example .env
-# 在 .env 中填写所需模型的 API KEY / BASE_URL / DEFAULT_MODELS
+# 编辑 .env，填入至少一个 LLM API Key
 uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
 ```
-- 默认使用 SQLite 数据库存储任务与会话，可在 `.env` 中替换为 PostgreSQL 等。
-- 沙箱执行时会在 `uploaded_datasets/user_<id>/` 中保存上传文件，在 `analysis_artifacts/` 中存放运行产生的图表（文件夹名包含用户 ID）。首次启动会自动创建默认用户（ID=1）。
-- 调试 REST 接口或编写自定义客户端时，请在请求头中加入 `X-User-Id`（正整数），以便划分数据归属；未指定时默认为 1。
-- **升级提示**：若从旧版本升级，请先备份旧的 `llm_data_lab.db`，然后删除该文件或执行“数据库迁移”章节中的 SQL 以补齐 `user_id` 字段。
 
 #### 前端
 ```bash
 cd frontend
 npm install
-cp .env.example .env.local
-# 若后端端口不同，请在 .env.local 中调整 NEXT_PUBLIC_API_BASE_URL
 npm run dev
+# 访问 http://localhost:3000
 ```
-访问 <http://localhost:3000>，即可体验：
-- **首页**：概览产品价值、操作步骤。
-- **数据工作台**：上传数据、生成代码、运行并查看输出，与模型进行对话协作。
-- **历史记录**：浏览历史任务详情、下载附件。
-- **设置**：管理默认模型、API Key、本地偏好，并可在“个人偏好”中指定当前用户 ID（保存在浏览器），用于区分各自的任务与数据。
 
-## 模型供应商配置
-- 各供应商默认凭证仍可在 `backend/.env` 中配置，而用户通过设置页填写的 API Key / Base URL / 默认模型会以加密形式保存在后端数据库，登录后自动加载。
-- `.env` 中新增 `CREDENTIALS_SECRET_KEY`（可选）用于加密存储，如未设置则退回 `JWT_SECRET_KEY` 的派生值。
-- 如果需要覆盖默认模型列表，可在设置页填写，或者通过 `.env` 的 `*_DEFAULT_MODELS` 调整全局默认。
-- 当前适配器均使用同步模式：每次调用会返回完整的模型输出、补丁与 Token 统计信息。
+---
 
-## 用户认证
-- 后端使用 JWT（HS256）签发访问令牌，配置项通过 `.env` 中的 `JWT_SECRET_KEY`、`JWT_ALGORITHM`、`ACCESS_TOKEN_EXPIRES_MINUTES` 调整。
-- REST 接口需在请求头携带 `Authorization: Bearer <token>`，前端会在登录后自动写入。
-- 浏览器访问：打开 `/auth` 页面即可注册或登录；注册成功后立即获取令牌。
-- 命令行调试示例：
+### Docker 部署（生产环境推荐）
+
+#### 1. 配置环境变量
 
 ```bash
-curl -X POST http://localhost:8000/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"username":"demo","password":"demo1234"}'
+# 复制配置模板
+cp backend/.env.example backend/.env
 
-# 登录获取 Bearer Token
-TOKEN=$(curl -s -X POST http://localhost:8000/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"username":"demo","password":"demo1234"}' | jq -r '.access_token')
-
-curl http://localhost:8000/history/tasks \
-  -H "Authorization: Bearer ${TOKEN}"
+# 编辑配置文件
+nano backend/.env
 ```
 
-## 数据分析能力
+**必需配置**：
+```bash
+# 生成 JWT 密钥（至少 32 字符）
+JWT_SECRET_KEY=$(openssl rand -hex 32)
+
+# 至少配置一个 LLM API Key
+OPENAI_API_KEY=sk-your-openai-key
+# 或
+DEEPSEEK_API_KEY=sk-your-deepseek-key
+```
+
+**完整配置示例**：
+```env
+# 安全配置
+JWT_SECRET_KEY=<使用 openssl rand -hex 32 生成>
+JWT_ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRES_MINUTES=43200
+
+# 数据库
+DATABASE_URL=sqlite+aiosqlite:///./llm_data_lab.db
+
+# LLM API（至少配置一个）
+OPENAI_API_KEY=sk-your-key
+OPENAI_DEFAULT_MODELS=["gpt-4o","gpt-4o-mini","gpt-4-turbo"]
+
+# 执行限制
+MAX_CODE_EXECUTION_SECONDS=60
+MAX_CODE_EXECUTION_MEMORY_MB=768
+```
+
+#### 2. 启动服务
+
+```bash
+# 本地测试
+docker-compose up -d
+
+# 🇨🇳 中国服务器（使用腾讯云镜像加速）
+bash deploy-server.sh cn
+
+# 🌐 生产环境部署（使用域名访问）
+bash deploy-server.sh cn prod
+```
+
+#### 3. 访问应用
+
+- **本地开发**：http://localhost:3000
+- **生产环境**：https://your-domain.com
+
+---
+
+## 🌐 域名配置（生产环境）
+
+### 前置准备
+
+1. 拥有一个域名（例如：`btchuro.com`）
+2. 域名已解析到服务器 IP
+3. 服务器防火墙开放 80、443 端口
+
+### 自动配置（推荐）
+
+```bash
+# 在服务器上执行（替换你的域名和邮箱）
+bash setup-domain.sh btchuro.com your-email@example.com
+```
+
+这个脚本会自动：
+- ✅ 安装 Nginx
+- ✅ 配置反向代理
+- ✅ 申请免费 SSL 证书（Let's Encrypt）
+- ✅ 配置 HTTPS 自动重定向
+
+### 手动配置
+
+#### 1. 安装 Nginx 和 Certbot
+
+```bash
+sudo apt update
+sudo apt install -y nginx certbot python3-certbot-nginx
+```
+
+#### 2. 创建 Nginx 配置
+
+```bash
+sudo nano /etc/nginx/sites-available/llm-data-lab
+```
+
+粘贴以下内容（替换 `your-domain.com`）：
+
+```nginx
+server {
+    listen 80;
+    server_name your-domain.com www.your-domain.com;
+    
+    client_max_body_size 100M;
+    
+    # 前端
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+    
+    # 后端 API
+    location /api/ {
+        rewrite ^/api/(.*) /$1 break;
+        proxy_pass http://localhost:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+    
+    # API 文档
+    location /docs {
+        proxy_pass http://localhost:8000/docs;
+    }
+}
+```
+
+#### 3. 启用配置并申请 SSL
+
+```bash
+# 启用配置
+sudo ln -s /etc/nginx/sites-available/llm-data-lab /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl restart nginx
+
+# 申请免费 SSL 证书
+sudo certbot --nginx -d your-domain.com -d www.your-domain.com
+```
+
+#### 4. 更新应用配置
+
+```bash
+# 编辑 docker-compose.prod.yml
+nano docker-compose.prod.yml
+```
+
+修改 API 地址为你的域名：
+```yaml
+services:
+  frontend:
+    environment:
+      - NEXT_PUBLIC_API_BASE_URL=https://your-domain.com/api
+```
+
+#### 5. 重新部署
+
+```bash
+bash deploy-server.sh cn prod
+```
+
+---
+
+## 🔧 常用管理命令
+
+```bash
+# 查看服务状态
+docker-compose ps
+
+# 查看日志
+docker-compose logs -f
+
+# 重启服务
+docker-compose restart
+
+# 停止服务
+docker-compose down
+
+# 完全清理重建
+docker-compose down -v
+bash deploy-server.sh cn prod
+
+# 诊断问题
+bash diagnose.sh
+
+# 修复配置
+bash fix-env.sh
+```
+
+---
+
+## 🛠️ 自动化脚本说明
+
+| 脚本 | 用途 | 使用方法 |
+|-----|------|---------|
+| `deploy-server.sh` | 自动化部署 | `bash deploy-server.sh cn prod` |
+| `setup-domain.sh` | 域名和 SSL 配置 | `bash setup-domain.sh your-domain.com email@example.com` |
+| `fix-env.sh` | 修复环境变量 | `bash fix-env.sh` |
+| `diagnose.sh` | 诊断问题 | `bash diagnose.sh` |
+
+---
+
+## 🐛 常见问题
+
+### 1. 用户注册失败（CORS 错误）
+
+**症状**：
+```
+Access to fetch at 'http://localhost:8000/auth/register' has been blocked by CORS policy
+```
+
+**原因**：前端 API 地址配置错误
+
+**解决方案**：
+```bash
+# 方式 1：使用生产配置部署
+bash deploy-server.sh cn prod
+
+# 方式 2：手动设置环境变量
+export NEXT_PUBLIC_API_BASE_URL=https://your-domain.com/api
+docker-compose down
+docker-compose build frontend
+docker-compose up -d
+```
+
+### 2. 后端容器启动失败
+
+**症状**：
+```
+container llm-data-lab-backend is unhealthy
+```
+
+**常见原因**：
+- JWT_SECRET_KEY 长度不足（需要 ≥32 字符）
+- .env 文件配置格式错误
+- 缺少 LLM API Key
+
+**解决方案**：
+```bash
+# 自动修复
+bash fix-env.sh
+
+# 查看日志
+docker-compose logs backend
+
+# 查看详细诊断
+bash diagnose.sh
+```
+
+### 3. Docker 构建速度慢
+
+**症状**：apt-get update 或 pip install 耗时很长
+
+**解决方案**：
+```bash
+# 🇨🇳 中国服务器：使用国内镜像源
+bash deploy-server.sh cn
+
+# 这会使用腾讯云镜像，构建速度提升 70%
+```
+
+### 4. Git 同步冲突
+
+**症状**：
+```
+error: Your local changes would be overwritten by merge
+```
+
+**解决方案**：
+```bash
+# 在服务器上强制同步
+cd ~/llm-data-lab
+git fetch origin
+git reset --hard origin/main
+```
+
+---
+
+## 📦 数据分析能力
+
 后端已预装常用科研分析库：
-- 数据处理：`pandas`, `numpy`
-- 可视化：`matplotlib`, `seaborn`, `plotly`
-- 统计建模：`scipy`, `statsmodels`, `lifelines`
-- 机器学习：`scikit-learn`, `shap`, `prophet`
-- 贝叶斯与概率建模：`pymc`, `arviz`
-- NLP 与文本处理：`nltk`, `spacy`
-可根据需求在 `backend/pyproject.toml` 中继续扩展，并重新执行 `pip install -e .`。
+- **数据处理**：pandas, numpy
+- **可视化**：matplotlib, seaborn, plotly
+- **统计建模**：scipy, statsmodels, lifelines
+- **机器学习**：scikit-learn, shap, prophet
+- **贝叶斯与概率建模**：pymc, arviz
+- **NLP 与文本处理**：nltk, spacy
 
-## 数据库迁移（从旧版本升级）
-如果已有历史数据库，需补充用户信息及外键关系。以下 SQL 适用于 SQLite：
+可根据需求在 `backend/pyproject.toml` 中扩展。
 
-```sql
-CREATE TABLE IF NOT EXISTS users (
-  id INTEGER PRIMARY KEY,
-  username TEXT NOT NULL UNIQUE,
-  email TEXT UNIQUE,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
+---
 
-ALTER TABLE analysis_tasks ADD COLUMN user_id INTEGER NOT NULL DEFAULT 1;
-ALTER TABLE chat_sessions ADD COLUMN user_id INTEGER NOT NULL DEFAULT 1;
-ALTER TABLE users ADD COLUMN password_hash TEXT;
+## 🔒 安全配置
 
-UPDATE analysis_tasks SET user_id = 1 WHERE user_id IS NULL;
-UPDATE chat_sessions SET user_id = 1 WHERE user_id IS NULL;
+### JWT 密钥生成
 
-INSERT OR IGNORE INTO users (id, username) VALUES (1, 'default');
+```bash
+# 生成 64 字符的随机密钥
+openssl rand -hex 32
 ```
 
-执行完毕后，重新启动后端即可。若希望保持数据库清洁，可在做完备份后直接删除旧的 `llm_data_lab.db`，由应用在首次启动时重新创建。
+### CORS 配置（生产环境）
 
-## 开发常用命令
-| 场景 | 命令 |
-| ---- | ---- |
-| 运行后端（开发模式） | `uvicorn backend.main:app --reload` |
-| 运行前端 | `npm run dev` |
-| 安装后端依赖 | `pip install -e .` |
-| 安装前端依赖 | `npm install` |
-| 格式/语法检查 | 依据团队标准自行添加（暂无全局 lint 命令） |
+编辑 `backend/main.py`，将：
+```python
+allow_origins=["*"],
+```
 
-## 设计说明
-- **同步执行**：代码执行采用同步 HTTP 接口，结果一次性返回；如需流式或长耗时任务，可在此基础上扩展。
-- **沙箱安全**：沙箱会限制执行时间与可用内存，必要时可替换为 Docker 容器或远程执行环境。
-- **历史留存**：每次生成/执行均写入数据库表 `analysis_tasks`，便于追溯与比对模型行为。
+改为具体域名：
+```python
+allow_origins=[
+    "https://your-domain.com",
+    "https://www.your-domain.com",
+],
+```
 
-## 后续改进建议
-1. 引入身份认证、团队空间与权限控制。
-2. 增加模型流式输出、思考链展示等交互体验。
-3. 支持自动生成 Markdown/PDF 报告，并允许一键分享。
-4. 构建提示词模板库与版本管理，便于科研复现。
+---
 
-欢迎结合实际场景扩展部署，若有新模型或功能需求，可在 `llm_adapters` 与前端 API 中继续拓展。EOF
+## 📊 部署架构
+
+### 本地开发
+```
+浏览器 → http://localhost:3000 (前端) → http://localhost:8000 (后端)
+```
+
+### 生产环境
+```
+浏览器 → https://your-domain.com (Nginx)
+            ├─→ / → localhost:3000 (前端)
+            └─→ /api/ → localhost:8000 (后端)
+```
+
+---
+
+## 🚢 完整部署流程（生产环境）
+
+### 1. 准备工作
+
+```bash
+# 克隆项目
+git clone https://github.com/Stefansong/llm-data-lab.git
+cd llm-data-lab
+```
+
+### 2. 配置环境变量
+
+```bash
+# 使用自动修复脚本
+bash fix-env.sh
+
+# 或手动配置
+cp backend/.env.example backend/.env
+nano backend/.env
+# 填入：
+# - JWT_SECRET_KEY=<openssl rand -hex 32 生成>
+# - OPENAI_API_KEY=sk-your-key
+```
+
+### 3. 配置域名和 SSL（如有域名）
+
+```bash
+# 替换为你的域名和邮箱
+bash setup-domain.sh your-domain.com your-email@example.com
+```
+
+### 4. 部署应用
+
+```bash
+# 🇨🇳 中国服务器（使用腾讯云镜像 + 域名）
+bash deploy-server.sh cn prod
+
+# 🌍 国外服务器（使用官方源 + 域名）
+bash deploy-server.sh prod
+
+# 本地测试（不使用域名）
+bash deploy-server.sh cn
+```
+
+### 5. 验证部署
+
+```bash
+# 检查容器状态
+docker-compose ps
+# 应该显示：
+# llm-data-lab-backend   healthy
+# llm-data-lab-frontend  running
+
+# 检查前端 API 配置
+docker-compose exec frontend env | grep API_BASE_URL
+
+# 测试 API
+curl https://your-domain.com/api/health
+# 应该返回：{"status":"ok"}
+
+# 浏览器访问
+# https://your-domain.com
+```
+
+---
+
+## 🔄 更新部署
+
+```bash
+# 拉取最新代码
+git pull origin main
+
+# 重新部署
+bash deploy-server.sh cn prod
+
+# 或手动
+docker-compose -f docker-compose.yml -f docker-compose.cn.yml -f docker-compose.prod.yml down
+docker-compose -f docker-compose.yml -f docker-compose.cn.yml -f docker-compose.prod.yml build
+docker-compose -f docker-compose.yml -f docker-compose.cn.yml -f docker-compose.prod.yml up -d
+```
+
+---
+
+## 🌍 镜像源配置
+
+### 中国部署（推荐使用镜像加速）
+
+项目已配置腾讯云镜像源，构建速度提升 **70%**：
+
+```bash
+# 使用 cn 参数启用镜像加速
+bash deploy-server.sh cn
+```
+
+### 国外部署
+
+```bash
+# 不带 cn 参数，使用官方源
+bash deploy-server.sh
+```
+
+### 其他镜像源
+
+如需使用阿里云或其他镜像源，手动指定构建参数：
+
+```bash
+docker-compose build \
+  --build-arg DEBIAN_MIRROR=mirrors.aliyun.com \
+  --build-arg PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/ \
+  --build-arg NPM_REGISTRY=https://registry.npmmirror.com/
+```
+
+---
+
+## 📖 API 文档
+
+启动服务后，访问：
+- **Swagger UI**：http://localhost:8000/docs
+- **ReDoc**：http://localhost:8000/redoc
+- **OpenAPI JSON**：http://localhost:8000/openapi.json
+
+---
+
+## 🔧 配置说明
+
+### 环境变量优先级
+
+```
+1. docker-compose.prod.yml（生产环境覆盖）
+2. docker-compose.cn.yml（中国镜像源覆盖）
+3. docker-compose.yml（基础配置）
+4. backend/.env（本地配置文件）
+```
+
+### 部署模式对照
+
+| 模式 | 命令 | API 地址 | 镜像源 |
+|-----|------|---------|--------|
+| 本地开发 | `docker-compose up` | `http://localhost:8000` | 官方源 |
+| 中国测试 | `bash deploy-server.sh cn` | `http://backend:8000` | 腾讯云 |
+| 生产环境 | `bash deploy-server.sh cn prod` | `https://your-domain.com/api` | 腾讯云 |
+
+---
+
+## 💡 最佳实践
+
+### 开发阶段
+- ✅ 使用本地开发环境（`npm run dev` + `uvicorn --reload`）
+- ✅ 代码提交前先本地测试
+
+### 测试阶段
+- ✅ 使用 Docker Compose 部署
+- ✅ 使用 `bash deploy-server.sh cn` 快速构建
+
+### 生产阶段
+- ✅ 配置域名和 SSL 证书
+- ✅ 使用 `bash deploy-server.sh cn prod` 部署
+- ✅ 配置具体的 CORS 域名（不使用 `allow_origins=["*"]`）
+- ✅ 定期备份数据库和上传文件
+- ✅ 监控服务状态和日志
+
+---
+
+## 🆘 故障排查
+
+### 查看日志
+
+```bash
+# 所有服务日志
+docker-compose logs -f
+
+# 只看后端
+docker-compose logs -f backend
+
+# 只看前端
+docker-compose logs -f frontend
+
+# Nginx 日志（如果配置了域名）
+sudo tail -f /var/log/nginx/error.log
+```
+
+### 诊断工具
+
+```bash
+# 全面诊断
+bash diagnose.sh
+
+# 这会检查：
+# - 配置文件完整性
+# - 环境变量设置
+# - Docker 容器状态
+# - 端口占用情况
+# - 服务健康状态
+```
+
+### 重置部署
+
+```bash
+# 完全清理
+docker-compose down -v
+docker system prune -f
+
+# 重新部署
+bash deploy-server.sh cn prod
+```
+
+---
+
+## 📚 技术栈
+
+- **后端**：Python 3.10, FastAPI, SQLAlchemy, Pydantic
+- **前端**：Next.js 14, React 18, TypeScript, Tailwind CSS
+- **数据库**：SQLite (开发), PostgreSQL (生产推荐)
+- **部署**：Docker, Docker Compose, Nginx
+- **认证**：JWT (HS256)
+- **LLM**：OpenAI, Anthropic, DeepSeek, Qwen, SiliconFlow
+
+---
+
+## 🤝 贡献
+
+欢迎提交 Issue 和 Pull Request！详见 [CONTRIBUTING.md](./CONTRIBUTING.md)
+
+---
+
+## 📄 许可证
+
+MIT License
+
+---
+
+## 📞 支持
+
+- **GitHub Issues**: https://github.com/Stefansong/llm-data-lab/issues
+- **文档**: 查看本 README 和项目内的注释
+
+---
+
+**最后更新**：2025-11-05
