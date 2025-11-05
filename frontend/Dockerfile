@@ -21,6 +21,10 @@ RUN npm ci
 # 阶段 2: 构建应用
 FROM node:18-alpine AS builder
 
+# 🌐 构建时 API 地址参数（支持不同部署场景）
+ARG NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
+
 WORKDIR /app
 
 # 从 deps 阶段复制 node_modules

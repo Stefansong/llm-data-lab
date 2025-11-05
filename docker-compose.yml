@@ -56,8 +56,9 @@ services:
     ports:
       - "3000:3000"
     environment:
-      # 🌐 生产环境：使用域名访问后端 API（通过 Nginx /api/ 路径）
-      # 📝 部署到自己的域名时，将 btchuro.com 改为你的域名
+      # ⚠️  API 地址通过构建参数传递（见 frontend/Dockerfile）
+      # 📝 使用 deploy.sh 会自动配置正确的 API 地址
+      # 📝 此处设置仅作为备用，实际值在构建时确定
       - NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
     depends_on:
       backend:

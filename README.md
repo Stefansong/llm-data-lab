@@ -43,14 +43,21 @@ DASHSCOPE_API_KEY=sk-your-qwen-key-here
 ```bash
 # 🇨🇳 中国服务器（推荐 - 使用腾讯云镜像，构建速度快 70%）
 bash deploy.sh start cn
+# 🌐 脚本会自动检测服务器 IP 并配置前端 API 地址
 
 # 🌍 国外服务器
 bash deploy.sh start
+# 🌐 脚本会自动检测服务器 IP 并配置前端 API 地址
 
 # 💻 本地开发（不用 Docker）
 # 后端：cd backend && pip install -e . && uvicorn backend.main:app --reload
 # 前端：cd frontend && npm install && npm run dev
 ```
+
+**📝 关于 API 地址自动配置**：
+- `deploy.sh` 会自动检测部署环境（本地/服务器/域名）
+- 前端会在**构建时**自动配置正确的后端 API 地址
+- **无需手动设置环境变量**，一切自动化！✨
 
 ### 第四步：访问应用
 
@@ -62,29 +69,6 @@ bash deploy.sh start
 
 ---
 
-## 🌐 配置外网访问
-
-### 使用 IP 地址访问（域名未备案）
-
-如果你的域名未备案或暂时只想用 IP 访问：
-
-```bash
-# 在服务器上执行
-bash deploy.sh start cn ip
-```
-
-脚本会自动：
-- ✅ 检测服务器公网 IP
-- ✅ 通过环境变量配置前端 API 地址
-- ✅ 前端通过 Nginx `/api/` 访问后端（避免 CORS 问题）
-- ✅ 支持 HTTP 访问（无需 SSL）
-
-然后在浏览器打开：**http://你的服务器IP**
-
-⚠️ **注意**：只需要基础的 `docker-compose.yml` 和 `docker-compose.cn.yml`，通过环境变量控制 API 地址。
-
----
-
 ## 🌐 配置域名（生产环境）
 
 如果你有域名（例如：`btchuro.com`），可以配置 HTTPS 访问。
@@ -92,9 +76,8 @@ bash deploy.sh start cn ip
 ### 前置准备
 
 1. ✅ 拥有一个域名
-2. ✅ **域名已备案**（如果服务器在中国大陆）
-3. ✅ 域名已解析到服务器 IP（添加 A 记录）
-4. ✅ 服务器防火墙开放 80 和 443 端口
+2. ✅ 域名已解析到服务器 IP（添加 A 记录）
+3. ✅ 服务器防火墙开放 80 和 443 端口
 
 ### 一键配置
 
@@ -112,12 +95,16 @@ bash deploy.sh domain btchuro.com your-email@example.com
 ### 部署到域名
 
 ```bash
-# 中国服务器 + 生产环境
+# 中国服务器 + 生产环境（推荐）
 bash deploy.sh start cn prod
+# 🌐 自动配置前端 API 地址为 https://btchuro.com/api
 
 # 国外服务器 + 生产环境
 bash deploy.sh start prod
+# 🌐 自动配置前端 API 地址为 https://btchuro.com/api
 ```
+
+**📝 注意**：如果使用其他域名，请修改 `deploy.sh` 第 322 行的域名配置。
 
 ### 访问
 
