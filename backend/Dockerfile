@@ -11,11 +11,20 @@ RUN apt-get update && apt-get install -y \
     git \
     && rm -rf /var/lib/apt/lists/*
 
+# 🔥 配置 pip 使用国内镜像源（解决服务器部署超时问题）
+RUN pip config set global.index-url https://mirrors.aliyun.com/pypi/simple/ && \
+    pip config set install.trusted-host mirrors.aliyun.com && \
+    pip config set global.timeout 300
+
 # 复制整个项目到 backend 目录
 COPY . /app/backend/
 
-# 安装依赖
-RUN cd /app/backend && pip install --no-cache-dir -e .
+# 安装依赖（增加超时和重试次数）
+RUN cd /app/backend && \
+    pip install --no-cache-dir \
+    --default-timeout=300 \
+    --retries=10 \
+    -e .
 
 # 设置工作目录为 app（backend 的父目录）
 WORKDIR /app

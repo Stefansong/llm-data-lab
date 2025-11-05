@@ -7,6 +7,9 @@ WORKDIR /app
 # 复制依赖文件
 COPY package.json package-lock.json ./
 
+# 🔥 配置 npm 使用国内镜像源（加速下载）
+RUN npm config set registry https://registry.npmmirror.com
+
 # 安装依赖
 RUN npm ci
 
