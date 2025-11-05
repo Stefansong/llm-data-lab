@@ -54,21 +54,48 @@ def _resolve_dataset_source(
 
 
 def _limit_resources(memory_mb: int) -> None:
-    """Apply soft resource caps for the subprocess."""
-    if memory_mb <= 0 or resource is None:
-        return
-    limit_bytes = memory_mb * 1024 * 1024
-    soft, hard = resource.getrlimit(resource.RLIMIT_AS)
+    """
+    应用资源限制到子进程。
 
-    def _clamp(value: int) -> int:
+    限制项：
+    - 内存（RLIMIT_AS）
+    - CPU 时间（RLIMIT_CPU）
+    - 进程数（RLIMIT_NPROC）
+    - 文件大小（RLIMIT_FSIZE）
+    - 打开文件数（RLIMIT_NOFILE）
+    """
+    if resource is None:
+        return  # Windows 不支持
+
+    limit_bytes = memory_mb * 1024 * 1024 if memory_mb > 0 else 768 * 1024 * 1024
+
+    def _clamp(value: int, limit: int) -> int:
         if value in (-1, resource.RLIM_INFINITY):
-            return limit_bytes
-        return min(limit_bytes, value)
+            return limit
+        return min(limit, value)
 
     try:
-        resource.setrlimit(resource.RLIMIT_AS, (_clamp(soft), _clamp(hard)))
-    except (ValueError, OSError):
-        # Some platforms disallow lowering limits; ignore and proceed.
+        # 🔒 内存限制
+        soft, hard = resource.getrlimit(resource.RLIMIT_AS)
+        resource.setrlimit(resource.RLIMIT_AS, (_clamp(soft, limit_bytes), _clamp(hard, limit_bytes)))
+
+        # 🔒 CPU 时间限制（防止无限循环）
+        resource.setrlimit(resource.RLIMIT_CPU, (120, 120))  # 最多 120 秒 CPU 时间
+
+        # 🔒 子进程数量限制（防止 fork 炸弹）
+        resource.setrlimit(resource.RLIMIT_NPROC, (10, 10))  # 最多 10 个子进程
+
+        # 🔒 文件大小限制（防止磁盘填满）
+        max_file_size = 50 * 1024 * 1024  # 50MB
+        resource.setrlimit(resource.RLIMIT_FSIZE, (max_file_size, max_file_size))
+
+        # 🔒 打开文件数限制
+        resource.setrlimit(resource.RLIMIT_NOFILE, (64, 64))  # 最多 64 个打开文件
+
+    except (ValueError, OSError) as e:
+        # 某些平台不允许降低限制；记录但继续
+        import logging
+        logging.getLogger(__name__).warning(f"Failed to set resource limits: {e}")
         pass
 
 
@@ -81,7 +108,16 @@ async def run_python_code(
     timeout: Optional[int] = None,
     user_id: Optional[int] = None,
 ) -> dict:
-    """Execute Python code inside a temporary working directory."""
+    """
+    在临时工作目录中执行 Python 代码。
+
+    安全措施：
+    - 临时隔离目录
+    - 资源限制（内存、CPU、进程数、文件大小）
+    - 网络访问阻断
+    - 文件系统限制
+    - 超时控制
+    """
     settings = get_settings()
     timeout = timeout or settings.max_code_execution_seconds
 
@@ -89,7 +125,46 @@ async def run_python_code(
         with tempfile.TemporaryDirectory(prefix="llm-data-lab-") as tmpdir:
             tmp_path = Path(tmpdir)
             script_path = tmp_path / "analysis.py"
-            script_path.write_text(code, encoding="utf-8")
+
+            # 🔒 在用户代码前添加安全限制代码
+            security_preamble = """
+# ===== 安全限制代码（由系统自动添加）=====
+import sys
+import os
+
+# 🔒 禁用危险模块的导入
+_DANGEROUS_MODULES = {
+    'subprocess', 'os.system', 'commands', 'popen2',
+    'multiprocessing', 'threading', 'asyncio.subprocess',
+    'socket', 'urllib', 'urllib2', 'urllib3', 'requests', 'httpx',
+    '__builtin__', '__builtins__', 'builtins',
+}
+
+# 🔒 覆盖内置函数以禁用危险操作
+_original_import = __builtins__.__import__
+
+def _safe_import(name, *args, **kwargs):
+    # 允许数据分析相关的安全模块
+    if any(name.startswith(dangerous) for dangerous in _DANGEROUS_MODULES):
+        # 允许部分 os 模块功能（仅文件路径操作）
+        if name == 'os':
+            import os as _os
+            # 只暴露安全的路径操作
+            class SafeOS:
+                path = _os.path
+                environ = {'DATASET_PATH': _os.environ.get('DATASET_PATH', '')}
+            return SafeOS()
+        # 其他危险模块一律拒绝
+        raise ImportError(f"Module '{name}' is disabled for security reasons")
+    return _original_import(name, *args, **kwargs)
+
+__builtins__.__import__ = _safe_import
+
+# ===== 用户代码开始 =====
+"""
+            # 组合安全代码和用户代码
+            full_code = security_preamble + code
+            script_path.write_text(full_code, encoding="utf-8")
 
             dataset_path = None
             if dataset_filename:
@@ -104,9 +179,19 @@ async def run_python_code(
                     if original_name and original_name != dataset_path.name:
                         shutil.copy2(source, tmp_path / original_name)
 
+            # 🔒 安全的最小环境变量（禁用网络访问）
             env = {
-                **dict(PATH=str(Path("/usr/bin")) + ":" + str(Path("/bin"))),
-                **dict(PYTHONUNBUFFERED="1"),
+                "PATH": "/usr/bin:/bin",  # 最小路径
+                "PYTHONUNBUFFERED": "1",
+                "HOME": str(tmp_path),  # 隔离主目录
+                "TMPDIR": str(tmp_path),  # 限制临时文件位置
+                # 🔒 禁用网络相关功能
+                "http_proxy": "http://127.0.0.1:1",  # 使无效代理阻止网络
+                "https_proxy": "http://127.0.0.1:1",
+                "HTTP_PROXY": "http://127.0.0.1:1",
+                "HTTPS_PROXY": "http://127.0.0.1:1",
+                "no_proxy": "",  # 不允许绕过代理
+                "NO_PROXY": "",
             }
             if dataset_path:
                 env["DATASET_PATH"] = str(dataset_path)

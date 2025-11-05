@@ -39,6 +39,14 @@ class Settings(BaseSettings):
     allowed_upload_extensions: List[str] = Field(default_factory=lambda: ["csv", "xlsx", "xls"])
     upload_dir: Path = Field(default=Path("./uploaded_datasets"))
 
+    # 🔒 文件上传安全限制
+    max_upload_size_mb: int = Field(
+        default=10,
+        ge=1,
+        le=100,
+        description="Maximum file upload size in MB. Default: 10MB"
+    )
+
     # LLM provider credentials (existing + new)
     openai_default_models: List[str] = Field(
         default_factory=lambda: ["gpt-4o", "gpt-4o-mini", "gpt-4.1"]

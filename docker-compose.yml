@@ -39,6 +39,8 @@ services:
       # 执行限制
       - MAX_CODE_EXECUTION_SECONDS=${MAX_CODE_EXECUTION_SECONDS:-60}
       - MAX_CODE_EXECUTION_MEMORY_MB=${MAX_CODE_EXECUTION_MEMORY_MB:-768}
+      # 🔒 文件上传安全
+      - MAX_UPLOAD_SIZE_MB=${MAX_UPLOAD_SIZE_MB:-10}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
