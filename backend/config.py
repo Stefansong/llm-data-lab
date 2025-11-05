@@ -1,8 +1,8 @@
 from functools import lru_cache
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Union
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -12,6 +12,23 @@ class Settings(BaseSettings):
     app_name: str = "LLM Data Lab"
     environment: str = Field(default="development", pattern="^(development|staging|production)$")
     frontend_origin: str = Field(default="http://localhost:3000")
+
+    # 🔒 CORS 安全配置
+    allowed_origins: Optional[List[str]] = Field(
+        default=None,
+        description="Allowed CORS origins (comma-separated string or list). If not set, defaults to localhost for development."
+    )
+
+    @field_validator("allowed_origins", mode="before")
+    @classmethod
+    def parse_allowed_origins(cls, v: Union[str, List[str], None]) -> Optional[List[str]]:
+        """Parse comma-separated ALLOWED_ORIGINS environment variable into a list."""
+        if v is None or v == "":
+            return None
+        if isinstance(v, str):
+            # Split by comma and strip whitespace
+            return [origin.strip() for origin in v.split(",") if origin.strip()]
+        return v
 
     database_url: str = Field(default="sqlite+aiosqlite:///./llm_data_lab.db")
 
@@ -50,13 +67,19 @@ class Settings(BaseSettings):
         description="Optional base64/UTF-8 secret for encrypting stored provider credentials. Falls back to JWT secret if omitted.",
     )
 
+    # 🔒 JWT 安全配置
     jwt_secret_key: str = Field(
         default="change-me-change-me-change-me-change",
-        min_length=32,
-        description="Secret key used to sign JWT access tokens.",
+        min_length=64,  # 提高最小长度要求
+        description="Secret key used to sign JWT access tokens. MUST be changed in production!"
     )
     jwt_algorithm: str = Field(default="HS256")
-    access_token_expires_minutes: int = Field(default=43200)  # 30 days
+    access_token_expires_minutes: int = Field(
+        default=1440,  # 🔒 改为 24 小时 (从 30 天缩短)
+        description="Access token validity period in minutes. Default: 24 hours."
+    )
+    # 🚀 未来可以添加 refresh token 支持
+    # refresh_token_expires_days: int = Field(default=30)
 
     max_code_execution_seconds: int = Field(default=60)
     max_code_execution_memory_mb: int = Field(default=768)

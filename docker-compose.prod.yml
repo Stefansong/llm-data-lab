@@ -10,6 +10,12 @@
 #   或手动：docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 
 services:
+  backend:
+    environment:
+      # 🔒 生产环境 CORS 配置
+      # 📝 部署到自己的域名时，修改下面的域名
+      - ALLOWED_ORIGINS=https://btchuro.com,https://www.btchuro.com
+
   frontend:
     environment:
       # 📝 部署到自己的域名时，修改下面的域名

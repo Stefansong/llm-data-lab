@@ -72,20 +72,20 @@ fix_env() {
         fi
     fi
     
-    # 检查并生成 JWT_SECRET_KEY
+    # 检查并生成 JWT_SECRET_KEY（要求至少 64 字符）
     JWT_KEY=$(grep "^JWT_SECRET_KEY=" backend/.env 2>/dev/null | cut -d'=' -f2 | tr -d '"' | tr -d "'" || echo "")
     JWT_LENGTH=${#JWT_KEY}
-    
-    if [ -z "$JWT_KEY" ] || [ $JWT_LENGTH -lt 32 ]; then
-        echo "🔑 生成 JWT_SECRET_KEY..."
+
+    if [ -z "$JWT_KEY" ] || [ $JWT_LENGTH -lt 64 ]; then
+        echo "🔑 生成 JWT_SECRET_KEY（64 字符）..."
         NEW_SECRET=$(openssl rand -hex 32 2>/dev/null || cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 64 | head -n 1)
-        
+
         if grep -q "^JWT_SECRET_KEY=" backend/.env 2>/dev/null; then
             sed -i.bak "s|^JWT_SECRET_KEY=.*|JWT_SECRET_KEY=$NEW_SECRET|" backend/.env
         else
             echo "JWT_SECRET_KEY=$NEW_SECRET" >> backend/.env
         fi
-        
+
         echo "  ✅ 已生成 JWT_SECRET_KEY（${#NEW_SECRET} 字符）"
     else
         echo "✅ JWT_SECRET_KEY 已配置（${JWT_LENGTH} 字符）"
@@ -298,17 +298,18 @@ deploy_start() {
     fi
     
     JWT_KEY=$(grep "^JWT_SECRET_KEY=" backend/.env | cut -d'=' -f2 | tr -d '"' | tr -d "'" || echo "")
-    if [ ${#JWT_KEY} -lt 32 ]; then
-        echo "  ⚠️  JWT_SECRET_KEY 长度不足"
+    if [ ${#JWT_KEY} -lt 64 ]; then
+        echo "  ⚠️  JWT_SECRET_KEY 长度不足（需要至少 64 字符）"
         echo "  运行: bash deploy.sh fix-env"
         exit 1
     fi
     echo "  ✅ 配置检查通过"
     echo ""
     
-    # 停止旧服务
+    # 停止旧服务（保留数据卷）
     echo "🛑 停止现有服务..."
-    docker-compose $COMPOSE_FILES down -v || true
+    docker-compose $COMPOSE_FILES down || true
+    echo "  💾 数据卷已保留"
     echo ""
     
     # 清理缓存
