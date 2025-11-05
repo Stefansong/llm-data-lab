@@ -22,12 +22,13 @@ show_help() {
 📦 部署应用：
   bash deploy.sh start              # 本地/国外服务器部署
   bash deploy.sh start cn           # 中国服务器（使用镜像加速）
+  bash deploy.sh start cn ip        # 使用 IP 访问（域名未备案时）
   bash deploy.sh start prod         # 生产环境（使用域名）
   bash deploy.sh start cn prod      # 中国 + 生产环境（推荐）
 
 🌐 配置域名：
   bash deploy.sh domain btchuro.com your-email@example.com
-  # 自动配置 Nginx + 申请免费 SSL 证书
+  # 自动配置 Nginx + 使用 standalone 模式申请 SSL 证书
 
 🔧 修复配置：
   bash deploy.sh fix-env
@@ -43,14 +44,18 @@ show_help() {
 1. 本地测试：
    bash deploy.sh start
 
-2. 腾讯云部署（btchuro.com）：
+2. 腾讯云部署（域名未备案，使用 IP 访问）：
+   bash deploy.sh fix-env
+   bash deploy.sh start cn ip
+
+3. 腾讯云部署（域名已备案）：
    bash deploy.sh fix-env
    bash deploy.sh domain btchuro.com your-email@example.com
    bash deploy.sh start cn prod
 
-3. 更新部署：
+4. 更新部署：
    git pull origin main
-   bash deploy.sh start cn prod
+   bash deploy.sh start cn prod  # 或 cn ip
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 EOF
@@ -189,18 +194,37 @@ EOF
     fi
     echo ""
     
-    # 申请 SSL 证书
-    echo "🔒 申请 SSL 证书..."
-    if sudo certbot --nginx \
+    # 申请 SSL 证书（使用 standalone 模式）
+    echo "🔒 申请 SSL 证书（standalone 模式）..."
+    echo "  ⏸️  临时停止 Nginx..."
+    sudo systemctl stop nginx
+    
+    if sudo certbot certonly --standalone \
         -d $DOMAIN \
         -d www.$DOMAIN \
         --non-interactive \
         --agree-tos \
-        --email "$EMAIL" \
-        --redirect; then
-        echo "  ✅ SSL 证书配置成功"
+        --email "$EMAIL"; then
+        echo "  ✅ SSL 证书申请成功"
+        
+        # 启动 Nginx
+        echo "  ▶️  启动 Nginx..."
+        sudo systemctl start nginx
+        
+        # 配置 Nginx SSL
+        echo "  ⚙️  配置 Nginx SSL..."
+        if sudo certbot install --nginx -d $DOMAIN --non-interactive; then
+            echo "  ✅ SSL 配置完成，已启用 HTTPS 重定向"
+        else
+            echo "  ⚠️  自动配置失败，需要手动配置 SSL"
+            echo "  证书位置："
+            echo "    /etc/letsencrypt/live/$DOMAIN/fullchain.pem"
+            echo "    /etc/letsencrypt/live/$DOMAIN/privkey.pem"
+        fi
     else
         echo "  ⚠️  SSL 证书申请失败，但 HTTP 访问可用"
+        echo "  ▶️  启动 Nginx..."
+        sudo systemctl start nginx
     fi
     
     echo ""
@@ -238,12 +262,15 @@ deploy_start() {
     COMPOSE_FILES="-f docker-compose.yml"
     USE_CN_MIRROR=false
     USE_PROD_CONFIG=false
+    USE_IP_ACCESS=false
     
     for arg in "$@"; do
         if [ "$arg" == "cn" ]; then
             USE_CN_MIRROR=true
         elif [ "$arg" == "prod" ]; then
             USE_PROD_CONFIG=true
+        elif [ "$arg" == "ip" ]; then
+            USE_IP_ACCESS=true
         fi
     done
     
@@ -254,9 +281,26 @@ deploy_start() {
     fi
     
     if [ "$USE_PROD_CONFIG" == "true" ]; then
-        echo "🌐 生产环境模式"
+        echo "🌐 生产环境模式（域名访问）"
         if [ -f "docker-compose.prod.yml" ]; then
             COMPOSE_FILES="$COMPOSE_FILES -f docker-compose.prod.yml"
+        fi
+    fi
+    
+    if [ "$USE_IP_ACCESS" == "true" ]; then
+        echo "🌐 IP 访问模式"
+        
+        # 获取服务器公网 IP
+        SERVER_IP=$(curl -s ifconfig.me || curl -s icanhazip.com || hostname -I | awk '{print $1}')
+        
+        if [ -z "$SERVER_IP" ]; then
+            echo "  ⚠️  无法自动获取公网 IP，请手动设置 NEXT_PUBLIC_API_BASE_URL"
+            export NEXT_PUBLIC_API_BASE_URL="http://YOUR_SERVER_IP/api"
+        else
+            echo "  📍 检测到服务器 IP：$SERVER_IP"
+            # 设置环境变量（前端通过 Nginx /api/ 访问后端）
+            export NEXT_PUBLIC_API_BASE_URL="http://$SERVER_IP/api"
+            echo "  ✅ 已设置 API 地址：$NEXT_PUBLIC_API_BASE_URL"
         fi
     fi
     
@@ -341,6 +385,13 @@ deploy_start() {
         echo "🌐 访问地址："
         echo "   前端：https://btchuro.com"
         echo "   后端：https://btchuro.com/docs"
+    elif [ "$USE_IP_ACCESS" == "true" ]; then
+        echo "🌐 访问地址（通过 Nginx）："
+        SERVER_IP=$(curl -s ifconfig.me || curl -s icanhazip.com || hostname -I | awk '{print $1}')
+        echo "   前端：http://$SERVER_IP"
+        echo "   后端：http://$SERVER_IP/api/docs"
+        echo ""
+        echo "✅ 已配置 Nginx 反向代理，前端通过 /api/ 访问后端，避免 CORS 问题"
     else
         echo "🌐 访问地址："
         SERVER_IP=$(hostname -I | awk '{print $1}' 2>/dev/null || echo "localhost")

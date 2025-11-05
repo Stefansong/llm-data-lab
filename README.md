@@ -62,6 +62,29 @@ bash deploy.sh start
 
 ---
 
+## 🌐 配置外网访问
+
+### 使用 IP 地址访问（域名未备案）
+
+如果你的域名未备案或暂时只想用 IP 访问：
+
+```bash
+# 在服务器上执行
+bash deploy.sh start cn ip
+```
+
+脚本会自动：
+- ✅ 检测服务器公网 IP
+- ✅ 通过环境变量配置前端 API 地址
+- ✅ 前端通过 Nginx `/api/` 访问后端（避免 CORS 问题）
+- ✅ 支持 HTTP 访问（无需 SSL）
+
+然后在浏览器打开：**http://你的服务器IP**
+
+⚠️ **注意**：只需要基础的 `docker-compose.yml` 和 `docker-compose.cn.yml`，通过环境变量控制 API 地址。
+
+---
+
 ## 🌐 配置域名（生产环境）
 
 如果你有域名（例如：`btchuro.com`），可以配置 HTTPS 访问。
@@ -69,8 +92,9 @@ bash deploy.sh start
 ### 前置准备
 
 1. ✅ 拥有一个域名
-2. ✅ 域名已解析到服务器 IP（添加 A 记录）
-3. ✅ 服务器防火墙开放 80 和 443 端口
+2. ✅ **域名已备案**（如果服务器在中国大陆）
+3. ✅ 域名已解析到服务器 IP（添加 A 记录）
+4. ✅ 服务器防火墙开放 80 和 443 端口
 
 ### 一键配置
 
@@ -82,7 +106,7 @@ bash deploy.sh domain btchuro.com your-email@example.com
 这会自动：
 - ✅ 安装 Nginx
 - ✅ 配置反向代理（前端 `/` → `localhost:3000`，后端 `/api/` → `localhost:8000`）
-- ✅ 申请免费 SSL 证书（Let's Encrypt）
+- ✅ 使用 standalone 模式申请免费 SSL 证书（Let's Encrypt）
 - ✅ 配置 HTTPS 自动重定向
 
 ### 部署到域名
@@ -443,6 +467,22 @@ docker-compose logs -f frontend
 sudo tail -f /var/log/nginx/error.log
 ```
 
+### SSL 证书申请失败
+
+如果遇到 SSL 验证失败（如 `connect() failed (111)` 错误），脚本已自动使用 standalone 模式：
+
+```bash
+# 手动使用 standalone 模式重新申请证书
+sudo systemctl stop nginx
+sudo certbot certonly --standalone \
+    -d btchuro.com \
+    -d www.btchuro.com \
+    --email your-email@example.com \
+    --agree-tos
+sudo systemctl start nginx
+sudo certbot install --nginx -d btchuro.com
+```
+
 ### 检查容器状态
 
 ```bash
@@ -543,8 +583,11 @@ services:
 # 为多个域名申请证书
 bash deploy.sh domain btchuro.com your-email@example.com
 
-# 然后手动添加其他域名
-sudo certbot --nginx -d api.btchuro.com
+# 然后手动添加其他域名（使用 standalone 模式）
+sudo systemctl stop nginx
+sudo certbot certonly --standalone -d api.btchuro.com --email your-email@example.com
+sudo systemctl start nginx
+sudo certbot install --nginx -d api.btchuro.com
 ```
 
 ---
