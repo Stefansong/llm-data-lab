@@ -25,6 +25,9 @@ COPY . .
 # 设置环境变量
 ENV NEXT_TELEMETRY_DISABLED 1
 
+# 确保 public 目录存在（即使为空）
+RUN mkdir -p ./public
+
 # 构建应用
 RUN npm run build
 
@@ -40,15 +43,12 @@ ENV NEXT_TELEMETRY_DISABLED 1
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-# 创建必要的目录
-RUN mkdir -p ./public
-
 # 复制构建结果
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# 复制 public 目录（如果存在，使用通配符处理空目录）
-COPY --from=builder --chown=nextjs:nodejs /app/public* ./public/ || true
+# 复制 public 目录（builder 阶段已确保存在）
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
 USER nextjs
 
