@@ -56,7 +56,9 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_BASE_URL=http://backend:8000
+      # 🌐 生产环境：使用域名访问后端 API（通过 Nginx /api/ 路径）
+      # 📝 部署到自己的域名时，将 btchuro.com 改为你的域名
+      - NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
     depends_on:
       backend:
         condition: service_healthy

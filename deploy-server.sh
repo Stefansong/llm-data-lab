@@ -1,8 +1,10 @@
 #!/bin/bash
 # LLM Data Lab - 云服务器部署脚本
 # 使用方法：
-#   bash deploy-server.sh          # 国外部署（使用官方源）
-#   bash deploy-server.sh cn       # 中国部署（使用腾讯云镜像）
+#   bash deploy-server.sh              # 国外部署（使用官方源）
+#   bash deploy-server.sh cn           # 中国部署（使用腾讯云镜像）
+#   bash deploy-server.sh cn prod      # 中国 + 生产环境（使用域名）
+#   bash deploy-server.sh prod         # 国外 + 生产环境（使用域名）
 
 set -e  # 遇到错误立即退出
 
@@ -22,12 +24,38 @@ echo ""
 
 # 2. 确定 Docker Compose 配置文件
 COMPOSE_FILES="-f docker-compose.yml"
-if [ "$1" == "cn" ]; then
+USE_CN_MIRROR=false
+USE_PROD_CONFIG=false
+
+# 解析参数
+for arg in "$@"; do
+    if [ "$arg" == "cn" ]; then
+        USE_CN_MIRROR=true
+    elif [ "$arg" == "prod" ]; then
+        USE_PROD_CONFIG=true
+    fi
+done
+
+# 添加中国镜像配置
+if [ "$USE_CN_MIRROR" == "true" ]; then
     echo "🇨🇳 中国部署模式：使用腾讯云镜像源加速"
     COMPOSE_FILES="$COMPOSE_FILES -f docker-compose.cn.yml"
 else
     echo "🌍 国际部署模式：使用官方镜像源"
 fi
+
+# 添加生产环境配置
+if [ "$USE_PROD_CONFIG" == "true" ]; then
+    echo "🌐 生产环境模式：使用域名访问"
+    if [ -f "docker-compose.prod.yml" ]; then
+        COMPOSE_FILES="$COMPOSE_FILES -f docker-compose.prod.yml"
+        echo "  ✅ 已加载 docker-compose.prod.yml"
+    else
+        echo "  ⚠️  警告：docker-compose.prod.yml 不存在"
+    fi
+fi
+
+echo "  配置文件：$COMPOSE_FILES"
 echo ""
 
 # 2. 拉取最新代码

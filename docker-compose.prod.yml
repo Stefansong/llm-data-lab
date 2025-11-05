@@ -1,0 +1,10 @@
+# Docker Compose 生产环境配置覆盖文件
+# 使用方法：docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+services:
+  frontend:
+    environment:
+      # 🌐 生产环境 API 地址（通过 Nginx /api/ 路径访问后端）
+      # 📝 部署到自己的域名时，修改下面的域名
+      - NEXT_PUBLIC_API_BASE_URL=https://btchuro.com/api
+
