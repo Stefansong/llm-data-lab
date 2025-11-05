@@ -322,14 +322,23 @@ deploy_start() {
         API_BASE_URL="https://btchuro.com/api"
         echo "🌐 前端 API 地址：$API_BASE_URL（域名）"
     else
-        # 开发/测试环境：使用服务器 IP
-        SERVER_IP=$(hostname -I | awk '{print $1}' 2>/dev/null || echo "localhost")
-        if [ "$SERVER_IP" == "localhost" ] || [ -z "$SERVER_IP" ]; then
+        # 开发/测试环境：自动检测公网 IP
+        echo "🔍 检测服务器公网 IP..."
+        
+        # 尝试多个服务获取公网 IP
+        SERVER_IP=$(curl -s --connect-timeout 3 ifconfig.me 2>/dev/null || \
+                    curl -s --connect-timeout 3 icanhazip.com 2>/dev/null || \
+                    curl -s --connect-timeout 3 ipinfo.io/ip 2>/dev/null || \
+                    echo "")
+        
+        # 如果获取失败，回退到本地模式
+        if [ -z "$SERVER_IP" ] || [ "$SERVER_IP" == "localhost" ]; then
             API_BASE_URL="http://localhost:8000"
             echo "🏠 前端 API 地址：$API_BASE_URL（本地）"
+            echo "   ⚠️  无法获取公网 IP，使用本地模式"
         else
             API_BASE_URL="http://$SERVER_IP/api"
-            echo "🌐 前端 API 地址：$API_BASE_URL（服务器 IP）"
+            echo "🌐 前端 API 地址：$API_BASE_URL（公网 IP: $SERVER_IP）"
         fi
     fi
     export NEXT_PUBLIC_API_BASE_URL="$API_BASE_URL"
@@ -378,12 +387,19 @@ deploy_start() {
     if [ "$USE_PROD_CONFIG" == "true" ]; then
         echo "🌐 访问地址："
         echo "   前端：https://btchuro.com"
-        echo "   后端：https://btchuro.com/docs"
+        echo "   后端：https://btchuro.com/api/docs"
     else
-        echo "🌐 访问地址："
-        SERVER_IP=$(hostname -I | awk '{print $1}' 2>/dev/null || echo "localhost")
-        echo "   前端：http://$SERVER_IP:3000"
-        echo "   后端：http://$SERVER_IP:8000/docs"
+        # 使用之前获取的公网 IP 或本地地址
+        if [ -n "$SERVER_IP" ] && [ "$SERVER_IP" != "localhost" ]; then
+            echo "🌐 访问地址："
+            echo "   前端：http://$SERVER_IP"
+            echo "   前端 API 已配置为：$API_BASE_URL"
+            echo "   后端文档：http://$SERVER_IP/api/docs"
+        else
+            echo "🌐 访问地址："
+            echo "   前端：http://localhost:3000"
+            echo "   后端：http://localhost:8000/docs"
+        fi
     fi
     echo ""
     echo "📋 常用命令："
