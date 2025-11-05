@@ -1,3 +1,4 @@
+import logging
 from typing import Any, Dict, Optional
 
 import httpx
@@ -5,8 +6,13 @@ import httpx
 from .base import (
     DEFAULT_CODE_RESPONSE_SCHEMA,
     DEFAULT_CODE_SYSTEM_PROMPT,
+    DEFAULT_CHAT_TIMEOUT,
+    DEFAULT_CODE_GENERATION_TIMEOUT,
+    DEFAULT_MODEL_LIST_TIMEOUT,
     LLMAdapter,
 )
+
+logger = logging.getLogger(__name__)
 
 
 OPENAI_ENDPOINT = "https://api.openai.com/v1/chat/completions"
@@ -27,15 +33,18 @@ class OpenAIAdapter(LLMAdapter):
         self.model = model
 
     async def generate_code(self, prompt: str, **kwargs: Any) -> Dict[str, Any]:
+        """Generate code using OpenAI models.
+
+        Implements json_schema with fallback to json_object if unsupported.
+        """
         await self.ensure_credentials()
         messages = kwargs.get("messages") or [
-            {
-                "role": "system",
-                "content": DEFAULT_CODE_SYSTEM_PROMPT,
-            },
+            {"role": "system", "content": DEFAULT_CODE_SYSTEM_PROMPT},
             {"role": "user", "content": prompt},
         ]
         temperature = kwargs.get("temperature", 0.1)
+        model = kwargs.get("model", self.model)
+
         response_format = kwargs.get("response_format") or {
             "type": "json_schema",
             "json_schema": {
@@ -43,41 +52,53 @@ class OpenAIAdapter(LLMAdapter):
                 "schema": DEFAULT_CODE_RESPONSE_SCHEMA,
             },
         }
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            request_body = {
-                "model": kwargs.get("model", self.model),
-                "messages": messages,
-                "temperature": temperature,
-                "response_format": response_format,
-            }
-            response = await client.post(
-                OPENAI_ENDPOINT,
-                headers={
-                    "Authorization": f"Bearer {self.api_key}",
-                    "Content-Type": "application/json",
-                },
-                json=request_body,
-            )
-            try:
-                response.raise_for_status()
-            except httpx.HTTPStatusError as exc:
-                if (
-                    exc.response.status_code == 400
-                    and response_format.get("type") == "json_schema"
-                ):
-                    request_body["response_format"] = {"type": "json_object"}
-                    response = await client.post(
-                        OPENAI_ENDPOINT,
-                        headers={
-                            "Authorization": f"Bearer {self.api_key}",
-                            "Content-Type": "application/json",
-                        },
-                        json=request_body,
-                    )
+
+        logger.info(f"OpenAI generate_code: model={model}, temp={temperature}, format={response_format.get('type')}")
+
+        request_body = {
+            "model": model,
+            "messages": messages,
+            "temperature": temperature,
+            "response_format": response_format,
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=DEFAULT_CODE_GENERATION_TIMEOUT) as client:
+                response = await client.post(
+                    OPENAI_ENDPOINT,
+                    headers={
+                        "Authorization": f"Bearer {self.api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json=request_body,
+                )
+                try:
                     response.raise_for_status()
-                else:
-                    raise
-            payload = response.json()
+                    logger.debug("OpenAI API call successful")
+                except httpx.HTTPStatusError as exc:
+                    # Fallback: json_schema → json_object
+                    if exc.response.status_code == 400 and response_format.get("type") == "json_schema":
+                        logger.warning("OpenAI json_schema not supported, falling back to json_object")
+                        request_body["response_format"] = {"type": "json_object"}
+                        response = await client.post(
+                            OPENAI_ENDPOINT,
+                            headers={
+                                "Authorization": f"Bearer {self.api_key}",
+                                "Content-Type": "application/json",
+                            },
+                            json=request_body,
+                        )
+                        response.raise_for_status()
+                        logger.info("OpenAI fallback to json_object successful")
+                    else:
+                        logger.error(f"OpenAI API error: {exc.response.status_code} - {exc.response.text}")
+                        raise
+
+                payload = response.json()
+
+        except httpx.RequestError as exc:
+            logger.error(f"OpenAI request error: {exc}")
+            raise
 
         content = payload["choices"][0]["message"]["content"]
         return {
@@ -87,38 +108,55 @@ class OpenAIAdapter(LLMAdapter):
         }
 
     async def chat(self, messages: list[Dict[str, str]], **kwargs: Any) -> Dict[str, Any]:
+        """Chat with OpenAI models."""
         await self.ensure_credentials()
         temperature = kwargs.get("temperature", 0.3)
+        model = kwargs.get("model", self.model)
+
         body: Dict[str, Any] = {
-            "model": kwargs.get("model", self.model),
+            "model": model,
             "messages": messages,
             "temperature": temperature,
         }
         if "response_format" in kwargs:
             body["response_format"] = kwargs["response_format"]
 
-        async with httpx.AsyncClient(timeout=40.0) as client:
-            response = await client.post(
-                OPENAI_ENDPOINT,
-                headers={
-                    "Authorization": f"Bearer {self.api_key}",
-                    "Content-Type": "application/json",
-                },
-                json=body,
-            )
-            response.raise_for_status()
-            payload = response.json()
+        logger.info(f"OpenAI chat: model={model}, temp={temperature}, messages={len(messages)}")
+
+        try:
+            async with httpx.AsyncClient(timeout=DEFAULT_CHAT_TIMEOUT) as client:
+                response = await client.post(
+                    OPENAI_ENDPOINT,
+                    headers={
+                        "Authorization": f"Bearer {self.api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json=body,
+                )
+                response.raise_for_status()
+                payload = response.json()
+                logger.debug("OpenAI chat successful")
+
+        except httpx.HTTPStatusError as exc:
+            logger.error(f"OpenAI chat error: {exc.response.status_code} - {exc.response.text}")
+            raise
+        except httpx.RequestError as exc:
+            logger.error(f"OpenAI chat request error: {exc}")
+            raise
 
         message = payload["choices"][0]["message"]
         return {"raw": payload, "message": message, "usage": payload.get("usage", {})}
 
     async def list_models(self) -> list[str]:
+        """Fetch available models from OpenAI API with fallback to defaults."""
         try:
             await self.ensure_credentials()
         except RuntimeError:
+            logger.debug("OpenAI credentials not configured, returning default models")
             return self.default_models
+
         try:
-            async with httpx.AsyncClient(timeout=20.0) as client:
+            async with httpx.AsyncClient(timeout=DEFAULT_MODEL_LIST_TIMEOUT) as client:
                 response = await client.get(
                     OPENAI_MODELS_ENDPOINT,
                     headers={"Authorization": f"Bearer {self.api_key}"},
@@ -130,6 +168,8 @@ class OpenAIAdapter(LLMAdapter):
                     for item in data.get("data", [])
                     if isinstance(item, dict) and item.get("id")
                 ]
+                logger.info(f"OpenAI: fetched {len(models)} models from API")
                 return models or self.default_models
-        except Exception:
+        except Exception as exc:
+            logger.warning(f"Failed to fetch OpenAI models: {exc}, using defaults")
             return self.default_models
