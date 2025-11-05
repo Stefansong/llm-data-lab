@@ -42,12 +42,21 @@ cp backend/.env.example backend/.env
 # 编辑 .env 文件，填入 API Keys
 
 # 2. 启动服务
+# 🌍 国外服务器：
 docker-compose up -d
+
+# 🇨🇳 中国服务器（使用腾讯云镜像加速）：
+docker-compose -f docker-compose.yml -f docker-compose.cn.yml up -d
 
 # 3. 访问应用
 # 前端：http://localhost:3000
 # 后端：http://localhost:8000/docs
 ```
+
+> 💡 **部署建议**：
+> - 🇨🇳 中国服务器部署：使用 `bash deploy-server.sh cn` 自动配置镜像加速
+> - 🌍 国外服务器部署：使用 `bash deploy-server.sh` 
+> - 📖 详细配置请参考 [镜像源配置指南](./DEPLOY_MIRRORS.md)
 
 详细的 Docker 部署指南请查看 [DOCKER_DEPLOY.md](DOCKER_DEPLOY.md)。
 

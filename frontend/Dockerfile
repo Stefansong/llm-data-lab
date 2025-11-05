@@ -1,14 +1,19 @@
 # 前端 Dockerfile - Next.js 多阶段构建
+# 🌍 构建参数：允许自定义镜像源（支持国内外部署）
+ARG NPM_REGISTRY="https://registry.npmjs.org/"
+
 # 阶段 1: 依赖安装
 FROM node:18-alpine AS deps
+
+ARG NPM_REGISTRY
 
 WORKDIR /app
 
 # 复制依赖文件
 COPY package.json package-lock.json ./
 
-# 🔥 配置 npm 使用腾讯云镜像源（加速下载）
-RUN npm config set registry https://mirrors.cloud.tencent.com/npm/
+# 🔥 配置 npm 镜像源（支持自定义）
+RUN npm config set registry "$NPM_REGISTRY"
 
 # 安装依赖
 RUN npm ci

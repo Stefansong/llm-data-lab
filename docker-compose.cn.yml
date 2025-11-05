@@ -1,0 +1,18 @@
+# Docker Compose 中国部署配置覆盖文件
+# 使用方法：docker-compose -f docker-compose.yml -f docker-compose.cn.yml up -d
+
+services:
+  backend:
+    build:
+      args:
+        # 🇨🇳 使用腾讯云镜像源（大幅加速构建）
+        DEBIAN_MIRROR: "mirrors.cloud.tencent.com"
+        PIP_INDEX_URL: "https://mirrors.cloud.tencent.com/pypi/simple/"
+        PIP_TRUSTED_HOST: "mirrors.cloud.tencent.com"
+
+  frontend:
+    build:
+      args:
+        # 🇨🇳 使用腾讯云 npm 镜像源
+        NPM_REGISTRY: "https://mirrors.cloud.tencent.com/npm/"
+

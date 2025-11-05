@@ -1,8 +1,19 @@
 # 后端 Dockerfile - Python + FastAPI + 科学计算库
 FROM python:3.10-slim
 
+# 🌍 构建参数：允许自定义镜像源（支持国内外部署）
+ARG DEBIAN_MIRROR=""
+ARG PIP_INDEX_URL="https://pypi.org/simple"
+ARG PIP_TRUSTED_HOST=""
+
 # 设置工作目录  
 WORKDIR /app
+
+# 🔥 可选：替换 Debian 镜像源（仅在提供 DEBIAN_MIRROR 时）
+RUN if [ -n "$DEBIAN_MIRROR" ]; then \
+        sed -i "s|deb.debian.org|$DEBIAN_MIRROR|g" /etc/apt/sources.list.d/debian.sources 2>/dev/null || \
+        sed -i "s|deb.debian.org|$DEBIAN_MIRROR|g" /etc/apt/sources.list; \
+    fi
 
 # 安装系统依赖
 RUN apt-get update && apt-get install -y \
@@ -11,10 +22,12 @@ RUN apt-get update && apt-get install -y \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-# 🔥 配置 pip 使用腾讯云镜像源（解决服务器部署超时问题）
-RUN pip config set global.index-url https://mirrors.cloud.tencent.com/pypi/simple/ && \
-    pip config set install.trusted-host mirrors.cloud.tencent.com && \
-    pip config set global.timeout 300
+# 🔥 配置 pip 镜像源（支持自定义）
+RUN pip config set global.index-url "$PIP_INDEX_URL" && \
+    pip config set global.timeout 300 && \
+    if [ -n "$PIP_TRUSTED_HOST" ]; then \
+        pip config set install.trusted-host "$PIP_TRUSTED_HOST"; \
+    fi
 
 # 复制整个项目到 backend 目录
 COPY . /app/backend/

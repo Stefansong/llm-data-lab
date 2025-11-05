@@ -1,6 +1,8 @@
 #!/bin/bash
 # LLM Data Lab - 云服务器部署脚本
-# 使用方法：bash deploy-server.sh
+# 使用方法：
+#   bash deploy-server.sh          # 国外部署（使用官方源）
+#   bash deploy-server.sh cn       # 中国部署（使用腾讯云镜像）
 
 set -e  # 遇到错误立即退出
 
@@ -16,6 +18,16 @@ if [ ! -f "docker-compose.yml" ]; then
 fi
 
 echo "✅ 当前目录：$(pwd)"
+echo ""
+
+# 2. 确定 Docker Compose 配置文件
+COMPOSE_FILES="-f docker-compose.yml"
+if [ "$1" == "cn" ]; then
+    echo "🇨🇳 中国部署模式：使用腾讯云镜像源加速"
+    COMPOSE_FILES="$COMPOSE_FILES -f docker-compose.cn.yml"
+else
+    echo "🌍 国际部署模式：使用官方镜像源"
+fi
 echo ""
 
 # 2. 拉取最新代码
@@ -58,7 +70,7 @@ echo ""
 
 # 5. 停止现有服务
 echo "🛑 步骤 4/8: 停止现有服务..."
-docker-compose down -v
+docker-compose $COMPOSE_FILES down -v
 echo ""
 
 # 6. 清理 Docker 缓存
@@ -67,19 +79,19 @@ docker system prune -f
 echo ""
 
 # 7. 构建镜像
-echo "🔨 步骤 6/8: 构建 Docker 镜像（使用国内镜像源，预计 5-7 分钟）..."
+echo "🔨 步骤 6/8: 构建 Docker 镜像（预计 5-7 分钟）..."
 echo "   后端构建中（这可能需要几分钟）..."
-docker-compose build --no-cache backend
+docker-compose $COMPOSE_FILES build --no-cache backend
 echo "   ✅ 后端构建完成"
 echo ""
 echo "   前端构建中..."
-docker-compose build --no-cache frontend
+docker-compose $COMPOSE_FILES build --no-cache frontend
 echo "   ✅ 前端构建完成"
 echo ""
 
 # 8. 启动服务
 echo "🚀 步骤 7/8: 启动所有服务..."
-docker-compose up -d
+docker-compose $COMPOSE_FILES up -d
 echo ""
 
 # 9. 等待服务启动
@@ -89,7 +101,7 @@ echo ""
 
 # 10. 检查服务状态
 echo "📊 服务状态："
-docker-compose ps
+docker-compose $COMPOSE_FILES ps
 echo ""
 
 # 11. 健康检查
