@@ -106,10 +106,10 @@ MAX_CODE_EXECUTION_MEMORY_MB=768
 docker-compose up -d
 
 # 🇨🇳 中国服务器（使用腾讯云镜像加速）
-bash deploy-server.sh cn
+bash deploy.sh start cn
 
 # 🌐 生产环境部署（使用域名访问）
-bash deploy-server.sh cn prod
+bash deploy.sh start cn prod
 ```
 
 #### 3. 访问应用
@@ -131,7 +131,7 @@ bash deploy-server.sh cn prod
 
 ```bash
 # 在服务器上执行（替换你的域名和邮箱）
-bash setup-domain.sh btchuro.com your-email@example.com
+bash deploy.sh domain btchuro.com your-email@example.com
 ```
 
 这个脚本会自动：
@@ -218,7 +218,7 @@ services:
 #### 5. 重新部署
 
 ```bash
-bash deploy-server.sh cn prod
+bash deploy.sh start cn prod
 ```
 
 ---
@@ -244,28 +244,30 @@ docker-compose down
 
 # 完全清理重建
 docker-compose down -v
-bash deploy-server.sh cn prod
+bash deploy.sh start cn prod
 ```
 
 ---
 
-## 🛠️ 自动化脚本
+## 🛠️ 统一部署工具
 
-项目提供 3 个核心脚本，覆盖所有部署场景：
-
-| 脚本 | 用途 | 使用方法 |
-|-----|------|---------|
-| `deploy-server.sh` | 一键部署 | `bash deploy-server.sh cn prod` |
-| `setup-domain.sh` | 域名和 SSL 配置 | `bash setup-domain.sh btchuro.com email@example.com` |
-| `fix-env.sh` | 自动修复 .env 配置 | `bash fix-env.sh` |
-
-### deploy-server.sh 参数说明
+项目提供一个 **deploy.sh** 脚本，包含所有部署功能：
 
 ```bash
-bash deploy-server.sh              # 国外服务器，本地测试
-bash deploy-server.sh cn           # 中国服务器，使用腾讯云镜像
-bash deploy-server.sh prod         # 国外服务器，生产环境（使用域名）
-bash deploy-server.sh cn prod      # 中国服务器，生产环境（推荐）
+# 📦 部署应用
+bash deploy.sh start              # 本地/国外服务器
+bash deploy.sh start cn           # 中国服务器（镜像加速）
+bash deploy.sh start prod         # 生产环境（使用域名）
+bash deploy.sh start cn prod      # 中国 + 生产（推荐）
+
+# 🌐 配置域名
+bash deploy.sh domain btchuro.com your-email@example.com
+
+# 🔧 修复配置
+bash deploy.sh fix-env
+
+# 📖 查看帮助
+bash deploy.sh help
 ```
 
 ---
@@ -284,7 +286,7 @@ Access to fetch at 'http://localhost:8000/auth/register' has been blocked by COR
 **解决方案**：
 ```bash
 # 方式 1：使用生产配置部署
-bash deploy-server.sh cn prod
+bash deploy.sh start cn prod
 
 # 方式 2：手动设置环境变量
 export NEXT_PUBLIC_API_BASE_URL=https://your-domain.com/api
@@ -308,7 +310,7 @@ container llm-data-lab-backend is unhealthy
 **解决方案**：
 ```bash
 # 自动修复
-bash fix-env.sh
+bash deploy.sh fix-env
 
 # 查看日志
 docker-compose logs backend
@@ -324,7 +326,7 @@ bash diagnose.sh
 **解决方案**：
 ```bash
 # 🇨🇳 中国服务器：使用国内镜像源
-bash deploy-server.sh cn
+bash deploy.sh start cn
 
 # 这会使用腾讯云镜像，构建速度提升 70%
 ```
@@ -416,7 +418,7 @@ cd llm-data-lab
 
 ```bash
 # 使用自动修复脚本
-bash fix-env.sh
+bash deploy.sh fix-env
 
 # 或手动配置
 cp backend/.env.example backend/.env
@@ -430,20 +432,20 @@ nano backend/.env
 
 ```bash
 # 替换为你的域名和邮箱
-bash setup-domain.sh your-domain.com your-email@example.com
+bash deploy.sh domain your-domain.com your-email@example.com
 ```
 
 ### 4. 部署应用
 
 ```bash
 # 🇨🇳 中国服务器（使用腾讯云镜像 + 域名）
-bash deploy-server.sh cn prod
+bash deploy.sh start cn prod
 
 # 🌍 国外服务器（使用官方源 + 域名）
-bash deploy-server.sh prod
+bash deploy.sh start prod
 
 # 本地测试（不使用域名）
-bash deploy-server.sh cn
+bash deploy.sh start cn
 ```
 
 ### 5. 验证部署
@@ -475,7 +477,7 @@ curl https://your-domain.com/api/health
 git pull origin main
 
 # 重新部署
-bash deploy-server.sh cn prod
+bash deploy.sh start cn prod
 
 # 或手动
 docker-compose -f docker-compose.yml -f docker-compose.cn.yml -f docker-compose.prod.yml down
@@ -493,14 +495,14 @@ docker-compose -f docker-compose.yml -f docker-compose.cn.yml -f docker-compose.
 
 ```bash
 # 使用 cn 参数启用镜像加速
-bash deploy-server.sh cn
+bash deploy.sh start cn
 ```
 
 ### 国外部署
 
 ```bash
 # 不带 cn 参数，使用官方源
-bash deploy-server.sh
+bash deploy.sh start
 ```
 
 ### 其他镜像源
@@ -541,8 +543,8 @@ docker-compose build \
 | 模式 | 命令 | API 地址 | 镜像源 |
 |-----|------|---------|--------|
 | 本地开发 | `docker-compose up` | `http://localhost:8000` | 官方源 |
-| 中国测试 | `bash deploy-server.sh cn` | `http://backend:8000` | 腾讯云 |
-| 生产环境 | `bash deploy-server.sh cn prod` | `https://your-domain.com/api` | 腾讯云 |
+| 中国测试 | `bash deploy.sh start cn` | `http://backend:8000` | 腾讯云 |
+| 生产环境 | `bash deploy.sh start cn prod` | `https://your-domain.com/api` | 腾讯云 |
 
 ---
 
@@ -554,11 +556,11 @@ docker-compose build \
 
 ### 测试阶段
 - ✅ 使用 Docker Compose 部署
-- ✅ 使用 `bash deploy-server.sh cn` 快速构建
+- ✅ 使用 `bash deploy.sh start cn` 快速构建
 
 ### 生产阶段
 - ✅ 配置域名和 SSL 证书
-- ✅ 使用 `bash deploy-server.sh cn prod` 部署
+- ✅ 使用 `bash deploy.sh start cn prod` 部署
 - ✅ 配置具体的 CORS 域名（不使用 `allow_origins=["*"]`）
 - ✅ 定期备份数据库和上传文件
 - ✅ 监控服务状态和日志
@@ -605,7 +607,7 @@ docker-compose down -v
 docker system prune -f
 
 # 重新部署
-bash deploy-server.sh cn prod
+bash deploy.sh start cn prod
 ```
 
 ---
