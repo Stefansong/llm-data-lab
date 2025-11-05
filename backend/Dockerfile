@@ -11,9 +11,9 @@ RUN apt-get update && apt-get install -y \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-# 🔥 配置 pip 使用国内镜像源（解决服务器部署超时问题）
-RUN pip config set global.index-url https://mirrors.aliyun.com/pypi/simple/ && \
-    pip config set install.trusted-host mirrors.aliyun.com && \
+# 🔥 配置 pip 使用腾讯云镜像源（解决服务器部署超时问题）
+RUN pip config set global.index-url https://mirrors.cloud.tencent.com/pypi/simple/ && \
+    pip config set install.trusted-host mirrors.cloud.tencent.com && \
     pip config set global.timeout 300
 
 # 复制整个项目到 backend 目录
