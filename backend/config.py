@@ -56,7 +56,7 @@ class Settings(BaseSettings):
         description="Secret key used to sign JWT access tokens.",
     )
     jwt_algorithm: str = Field(default="HS256")
-    access_token_expires_minutes: int = Field(default=60)
+    access_token_expires_minutes: int = Field(default=43200)  # 30 days
 
     max_code_execution_seconds: int = Field(default=60)
     max_code_execution_memory_mb: int = Field(default=768)

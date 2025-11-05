@@ -20,13 +20,11 @@ services:
       - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
       - ACCESS_TOKEN_EXPIRES_MINUTES=${ACCESS_TOKEN_EXPIRES_MINUTES:-43200}
       - CREDENTIALS_SECRET_KEY=${CREDENTIALS_SECRET_KEY:-}
-      - DATABASE_URL=${DATABASE_URL:-sqlite:///./db/llm_data_lab.db}
+      - DATABASE_URL=${DATABASE_URL:-sqlite+aiosqlite:///./db/llm_data_lab.db}
       # LLM API Keys
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
-      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.openai.com/v1}
       - OPENAI_DEFAULT_MODELS=${OPENAI_DEFAULT_MODELS:-["gpt-4o","gpt-4o-mini","gpt-4.1"]}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
-      - ANTHROPIC_DEFAULT_MODELS=${ANTHROPIC_DEFAULT_MODELS:-["claude-3-sonnet-20240229","claude-3-haiku-20240307"]}
       - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
       - DEEPSEEK_BASE_URL=${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
       - DEEPSEEK_DEFAULT_MODELS=${DEEPSEEK_DEFAULT_MODELS:-["deepseek-chat","deepseek-coder"]}
@@ -38,7 +36,7 @@ services:
       - SILICONFLOW_DEFAULT_MODELS=${SILICONFLOW_DEFAULT_MODELS:-["siliconflow-chat","siliconflow-coder"]}
       # 执行限制
       - MAX_CODE_EXECUTION_SECONDS=${MAX_CODE_EXECUTION_SECONDS:-60}
-      - MAX_CODE_EXECUTION_MEMORY_MB=${MAX_CODE_EXECUTION_MEMORY_MB:-512}
+      - MAX_CODE_EXECUTION_MEMORY_MB=${MAX_CODE_EXECUTION_MEMORY_MB:-768}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
