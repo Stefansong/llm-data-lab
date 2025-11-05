@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { LANG_UPDATED_EVENT, chatTexts, readLang, type Lang } from "@/lib/i18n";
+import { LoadingMessage } from "@/components/ui/Spinner";
 
 export type WorkspaceChatRole = "user" | "assistant";
 
@@ -140,7 +141,7 @@ export function ChatPanel({
             );
           })
         )}
-        {isLoading ? <p className="text-xs text-brand">{T.thinking}</p> : null}
+        {isLoading ? <LoadingMessage message={T.thinking} size="sm" /> : null}
         {error ? <p className="text-xs text-rose-300">{error}</p> : null}
       </div>
       <form onSubmit={handleSubmit} className="space-y-2 border-t border-slate-800 px-4 py-3">

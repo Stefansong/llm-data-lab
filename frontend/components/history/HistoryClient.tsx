@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { AnalysisTask, getTask, listHistory } from "@/lib/api";
 import { Alert } from "@/components/ui/Alert";
+import { LoadingMessage } from "@/components/ui/Spinner";
 import { subscribeToUserIdChange } from "@/lib/userProfile";
 import { LANG_UPDATED_EVENT, historyTexts, readLang, type Lang } from "@/lib/i18n";
 
@@ -122,14 +123,14 @@ export function HistoryClient() {
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-slate-500">
-                  {T.loading}
+                <td colSpan={6} className="px-4 py-6">
+                  <LoadingMessage message={T.loading} />
                 </td>
               </tr>
             ) : null}
             {!isLoading && tasks.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-slate-500">
+                <td colSpan={6} className="px-4 py-6 text-center text-slate-500">
                   {T.empty}
                 </td>
               </tr>
@@ -190,7 +191,11 @@ export function HistoryClient() {
             </div>
 
             <div className="flex-1 overflow-y-auto px-6 py-5">
-              {isDetailLoading ? <Alert tone="info" message={T.loading} /> : null}
+              {isDetailLoading ? (
+                <div className="py-8">
+                  <LoadingMessage message={T.loading} size="md" />
+                </div>
+              ) : null}
               {detailError ? <Alert tone="error" title={T.detailFailed} message={detailError} /> : null}
 
               {selectedTask ? (

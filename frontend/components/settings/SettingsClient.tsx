@@ -81,6 +81,20 @@ export function SettingsClient() {
   const [providerError, setProviderError] = useState<string | null>(null);
   const [claims] = useState<AuthClaims | null>(null);
 
+  // Field-level validation errors (per provider)
+  const [urlErrors, setUrlErrors] = useState<Record<string, string | undefined>>({});
+
+  // URL validation function
+  const validateUrl = (value: string): string | undefined => {
+    if (!value.trim()) return undefined; // URL is optional
+    try {
+      const url = new URL(value.trim());
+      return url.protocol === "http:" || url.protocol === "https:" ? undefined : L.invalidUrl;
+    } catch {
+      return L.invalidUrl;
+    }
+  };
+
   const mapCredentialsToForms = useCallback((credentials: ProviderCredentialMap) => {
     const forms: Record<string, ProviderCredentialForm> = {};
     PROVIDER_ITEMS.forEach((item) => {
@@ -151,7 +165,32 @@ export function SettingsClient() {
     []
   );
 
+  const handleUrlBlur = useCallback((providerId: string, value: string) => {
+    setUrlErrors((prev) => ({
+      ...prev,
+      [providerId]: validateUrl(value),
+    }));
+  }, [L.invalidUrl]);
+
   const handleSaveProviderCredentials = async () => {
+    // Validate all URLs first
+    const errors: Record<string, string | undefined> = {};
+    Object.entries(providerForms).forEach(([providerId, form]) => {
+      if (form.baseUrl.trim()) {
+        const urlError = validateUrl(form.baseUrl);
+        if (urlError) {
+          errors[providerId] = urlError;
+        }
+      }
+    });
+
+    // If there are validation errors, show them and return
+    if (Object.keys(errors).length > 0) {
+      setUrlErrors(errors);
+      setProviderError("请修正无效的 URL 后再保存。");
+      return;
+    }
+
     const normalized: ProviderCredentialMap = {};
     Object.entries(providerForms).forEach(([providerId, form]) => {
       const apiKey = form.apiKey.trim();
@@ -181,6 +220,7 @@ export function SettingsClient() {
       setProviderForms(mapCredentialsToForms(updated));
       setProviderSaved(true);
       setProviderError(null);
+      setUrlErrors({});
       setTimeout(() => setProviderSaved(false), 2000);
     } catch (error) {
       console.error("Failed to save provider credentials", error);
@@ -237,9 +277,17 @@ export function SettingsClient() {
                         type="text"
                         value={form.baseUrl}
                         onChange={(event) => handleProviderChange(provider.id, "baseUrl", event.target.value)}
-                        className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100"
+                        onBlur={(event) => handleUrlBlur(provider.id, event.target.value)}
+                        className={`mt-1 w-full rounded-md border px-3 py-2 text-sm text-slate-100 ${
+                          urlErrors[provider.id]
+                            ? "border-rose-500 bg-slate-950/60"
+                            : "border-slate-700 bg-slate-950/60"
+                        }`}
                         placeholder={provider.basePlaceholder ?? "https://..."}
                       />
+                      {urlErrors[provider.id] ? (
+                        <p className="mt-1 text-xs text-rose-400">{urlErrors[provider.id]}</p>
+                      ) : null}
                     </label>
                   ) : null}
                   <label className="block text-xs font-medium text-slate-300">

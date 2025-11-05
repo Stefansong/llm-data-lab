@@ -29,19 +29,89 @@ export function AuthClient() {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Field-level validation errors
+  const [fieldErrors, setFieldErrors] = useState<{
+    username?: string;
+    email?: string;
+    password?: string;
+    confirmPassword?: string;
+  }>({});
+
   const isRegister = mode === "register";
+
+  // Validation functions
+  const validateEmail = (value: string): string | undefined => {
+    if (!value.trim()) return undefined; // Email is optional
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(value.trim()) ? undefined : T.emailInvalid;
+  };
+
+  const validateUsername = (value: string): string | undefined => {
+    if (!value.trim()) return T.needUserPass;
+    return value.trim().length >= 3 ? undefined : T.usernameShort;
+  };
+
+  const validatePassword = (value: string): string | undefined => {
+    if (!value) return T.needUserPass;
+    return value.length >= 8 ? undefined : T.passwordShort;
+  };
+
+  const validateConfirmPassword = (value: string, passwordValue: string): string | undefined => {
+    if (!value) return T.needUserPass;
+    return value === passwordValue ? undefined : T.mismatch;
+  };
+
+  // Real-time validation handlers
+  const handleUsernameBlur = () => {
+    setFieldErrors((prev) => ({
+      ...prev,
+      username: validateUsername(username),
+    }));
+  };
+
+  const handleEmailBlur = () => {
+    setFieldErrors((prev) => ({
+      ...prev,
+      email: validateEmail(email),
+    }));
+  };
+
+  const handlePasswordBlur = () => {
+    setFieldErrors((prev) => ({
+      ...prev,
+      password: validatePassword(password),
+    }));
+  };
+
+  const handleConfirmPasswordBlur = () => {
+    setFieldErrors((prev) => ({
+      ...prev,
+      confirmPassword: validateConfirmPassword(confirmPassword, password),
+    }));
+  };
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setError(null);
-    if (!username || !password) {
-      setError(T.needUserPass);
+
+    // Validate all fields
+    const errors: typeof fieldErrors = {};
+    errors.username = validateUsername(username);
+    errors.password = validatePassword(password);
+
+    if (isRegister) {
+      errors.email = validateEmail(email);
+      errors.confirmPassword = validateConfirmPassword(confirmPassword, password);
+    }
+
+    // Check if there are any errors
+    const hasErrors = Object.values(errors).some((err) => err !== undefined);
+    if (hasErrors) {
+      setFieldErrors(errors);
       return;
     }
-    if (isRegister && password !== confirmPassword) {
-      setError(T.mismatch);
-      return;
-    }
+
+    setFieldErrors({});
     setIsSubmitting(true);
     try {
       const response = isRegister
@@ -112,9 +182,17 @@ export function AuthClient() {
             autoComplete="username"
             value={username}
             onChange={(event) => setUsername(event.target.value)}
-            className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950/70 px-3 py-2 text-sm text-white outline-none focus:border-brand"
+            onBlur={handleUsernameBlur}
+            className={`mt-1 w-full rounded-md border px-3 py-2 text-sm text-white outline-none focus:border-brand ${
+              fieldErrors.username
+                ? "border-rose-500 bg-slate-950/70"
+                : "border-slate-700 bg-slate-950/70"
+            }`}
             placeholder={T.usernamePh}
           />
+          {fieldErrors.username ? (
+            <p className="mt-1 text-xs text-rose-400">{fieldErrors.username}</p>
+          ) : null}
         </label>
 
         {isRegister ? (
@@ -125,9 +203,17 @@ export function AuthClient() {
               autoComplete="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950/70 px-3 py-2 text-sm text-white outline-none focus:border-brand"
+              onBlur={handleEmailBlur}
+              className={`mt-1 w-full rounded-md border px-3 py-2 text-sm text-white outline-none focus:border-brand ${
+                fieldErrors.email
+                  ? "border-rose-500 bg-slate-950/70"
+                  : "border-slate-700 bg-slate-950/70"
+              }`}
               placeholder={T.emailPh}
             />
+            {fieldErrors.email ? (
+              <p className="mt-1 text-xs text-rose-400">{fieldErrors.email}</p>
+            ) : null}
           </label>
         ) : null}
 
@@ -138,9 +224,17 @@ export function AuthClient() {
             autoComplete={isRegister ? "new-password" : "current-password"}
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950/70 px-3 py-2 text-sm text-white outline-none focus:border-brand"
+            onBlur={handlePasswordBlur}
+            className={`mt-1 w-full rounded-md border px-3 py-2 text-sm text-white outline-none focus:border-brand ${
+              fieldErrors.password
+                ? "border-rose-500 bg-slate-950/70"
+                : "border-slate-700 bg-slate-950/70"
+            }`}
             placeholder={T.passwordPh}
           />
+          {fieldErrors.password ? (
+            <p className="mt-1 text-xs text-rose-400">{fieldErrors.password}</p>
+          ) : null}
         </label>
 
         {isRegister ? (
@@ -151,9 +245,17 @@ export function AuthClient() {
               autoComplete="new-password"
               value={confirmPassword}
               onChange={(event) => setConfirmPassword(event.target.value)}
-              className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950/70 px-3 py-2 text-sm text-white outline-none focus:border-brand"
+              onBlur={handleConfirmPasswordBlur}
+              className={`mt-1 w-full rounded-md border px-3 py-2 text-sm text-white outline-none focus:border-brand ${
+                fieldErrors.confirmPassword
+                  ? "border-rose-500 bg-slate-950/70"
+                  : "border-slate-700 bg-slate-950/70"
+              }`}
               placeholder={T.confirmPh}
             />
+            {fieldErrors.confirmPassword ? (
+              <p className="mt-1 text-xs text-rose-400">{fieldErrors.confirmPassword}</p>
+            ) : null}
           </label>
         ) : null}
 

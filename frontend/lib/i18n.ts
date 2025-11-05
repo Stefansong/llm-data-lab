@@ -116,6 +116,8 @@ export const settingsTexts = {
     failed: "无法加载 API 配置，请稍后重试。",
     baseUrl: "自定义 API Base URL",
     modelList: "模型列表（逗号或换行分隔，留空使用默认）",
+    // Validation errors
+    invalidUrl: "请输入有效的 URL（必须以 http:// 或 https:// 开头）",
   },
   en: {
     title: "Settings & Integrations",
@@ -126,6 +128,8 @@ export const settingsTexts = {
     failed: "Failed to load API settings. Please try again later.",
     baseUrl: "Custom API Base URL",
     modelList: "Models (comma or newline separated; leave empty to use defaults)",
+    // Validation errors
+    invalidUrl: "Please enter a valid URL (must start with http:// or https://)",
   },
 };
 
@@ -263,6 +267,11 @@ export const authTexts = {
     needUserPass: "请输入用户名和密码。",
     mismatch: "两次输入的密码不一致。",
     fallbackError: "操作失败，请稍后重试。",
+    verifying: "正在校验登录状态...",
+    // Validation errors
+    usernameShort: "用户名至少需要 3 个字符。",
+    passwordShort: "密码至少需要 8 个字符。",
+    emailInvalid: "请输入有效的邮箱地址。",
   },
   en: {
     title: "Sign In / Register",
@@ -284,5 +293,10 @@ export const authTexts = {
     needUserPass: "Please enter username and password.",
     mismatch: "Passwords do not match.",
     fallbackError: "Operation failed. Please try again later.",
+    verifying: "Verifying authentication...",
+    // Validation errors
+    usernameShort: "Username must be at least 3 characters.",
+    passwordShort: "Password must be at least 8 characters.",
+    emailInvalid: "Please enter a valid email address.",
   },
 };
