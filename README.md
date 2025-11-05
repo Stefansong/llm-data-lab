@@ -2,224 +2,104 @@
 
 一个面向科研工作者的数据分析协作平台。用户以自然语言描述任务，系统即可调用多种大语言模型生成 Python 代码，在受控沙箱内执行并输出统计结果、图表与文字总结。
 
-## 功能亮点
-- **多模型联动**：已适配 OpenAI、Anthropic、DeepSeek、Qwen、SiliconFlow 等 API，便于横向对比不同模型产出的代码与结论。
-- **一键执行**：生成的 Python 脚本直接在隔离沙箱中同步运行，产出标准输出、错误日志与图像附件。
-- **数据工作台**：集成数据上传、模型选择、代码编辑、执行结果浏览及模型对话协作于一体。
-- **历史留存**：所有任务自动归档，可随时查看 prompt、代码、执行日志与生成的附件。
-- **多用户隔离**：后端以 `X-User-Id` 头区分用户，上传文件、执行产物、任务记录与会话均按用户单独存储。
-- **凭证集中管理**：每个账户的 API Key、Base URL 与模型设置都会加密保存到后端，可在任意设备登录后自动同步。
-- **双模式分析**：可选择"分析策略"（生成详细方案）或"数据分析"（直接执行统计/可视化），提示词会随模式自动调整。
-- **账户体系**：提供注册、登录与退出功能，所有 API 现需携带 Bearer Token 访问，确保多用户场景下的权限隔离。
-
-## 目录结构
-```
-llm-data-lab/
-├── backend/              # FastAPI 后端服务
-│   ├── api/              # REST 接口（LLM、执行、历史、数据集）
-│   ├── llm_adapters/     # 多模型 API 适配层实现
-│   ├── sandbox/          # Python 代码执行沙箱
-│   ├── services/         # 业务逻辑、数据库读写
-│   ├── models/           # SQLAlchemy 表定义
-│   └── main.py           # FastAPI 应用入口
-├── frontend/             # Next.js 14 + Tailwind 前端
-│   ├── app/              # App Router 页面（首页、工作台、历史、设置）
-│   ├── components/       # UI 组件与业务模块
-│   └── lib/api.ts        # 与后端交互的封装
-├── prompts/              # 提示词模板（YAML）
-└── notebooks/            # 示例分析或研究记录
-```
-
 ---
 
-## 🚀 快速部署
+## ⚡ 快速开始
 
-### 本地开发
+### 第一步：克隆项目
 
-#### 后端
 ```bash
-cd backend
-python3 -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
-pip install -e .
-cp .env.example .env
-# 编辑 .env，填入至少一个 LLM API Key
-uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
+git clone https://github.com/Stefansong/llm-data-lab.git
+cd llm-data-lab
 ```
 
-#### 前端
-```bash
-cd frontend
-npm install
-npm run dev
-# 访问 http://localhost:3000
-```
-
----
-
-### Docker 部署（生产环境推荐）
-
-#### 1. 配置环境变量
+### 第二步：配置环境变量
 
 ```bash
-# 复制配置模板
-cp backend/.env.example backend/.env
+# 自动生成配置文件
+bash deploy.sh fix-env
 
-# 编辑配置文件
+# 编辑配置，填入你的 LLM API Key
 nano backend/.env
 ```
 
-**必需配置**：
+**必须配置**（在 `backend/.env` 中）：
 ```bash
-# 生成 JWT 密钥（至少 32 字符）
-JWT_SECRET_KEY=$(openssl rand -hex 32)
+# JWT 密钥（已自动生成，无需修改）
+JWT_SECRET_KEY=<自动生成的64字符随机字符串>
 
-# 至少配置一个 LLM API Key
-OPENAI_API_KEY=sk-your-openai-key
+# 至少配置一个 LLM API Key（必需）
+OPENAI_API_KEY=sk-your-openai-key-here
 # 或
-DEEPSEEK_API_KEY=sk-your-deepseek-key
+DEEPSEEK_API_KEY=sk-your-deepseek-key-here
+# 或
+DASHSCOPE_API_KEY=sk-your-qwen-key-here
 ```
 
-**完整配置示例**：
-```env
-# 安全配置
-JWT_SECRET_KEY=<使用 openssl rand -hex 32 生成>
-JWT_ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRES_MINUTES=43200
+按 `Ctrl+X`，然后 `Y`，再按 `Enter` 保存。
 
-# 数据库
-DATABASE_URL=sqlite+aiosqlite:///./llm_data_lab.db
-
-# LLM API（至少配置一个）
-OPENAI_API_KEY=sk-your-key
-OPENAI_DEFAULT_MODELS=["gpt-4o","gpt-4o-mini","gpt-4-turbo"]
-
-# 执行限制
-MAX_CODE_EXECUTION_SECONDS=60
-MAX_CODE_EXECUTION_MEMORY_MB=768
-```
-
-#### 2. 启动服务
+### 第三步：启动服务
 
 ```bash
-# 本地测试
-docker-compose up -d
-
-# 🇨🇳 中国服务器（使用腾讯云镜像加速）
+# 🇨🇳 中国服务器（推荐 - 使用腾讯云镜像，构建速度快 70%）
 bash deploy.sh start cn
 
-# 🌐 生产环境部署（使用域名访问）
-bash deploy.sh start cn prod
+# 🌍 国外服务器
+bash deploy.sh start
+
+# 💻 本地开发（不用 Docker）
+# 后端：cd backend && pip install -e . && uvicorn backend.main:app --reload
+# 前端：cd frontend && npm install && npm run dev
 ```
 
-#### 3. 访问应用
+### 第四步：访问应用
 
-- **本地开发**：http://localhost:3000
-- **生产环境**：https://your-domain.com
+打开浏览器访问：
+- **前端**：http://localhost:3000 或 http://你的服务器IP:3000
+- **后端 API 文档**：http://localhost:8000/docs
+
+🎉 **开始使用**：注册账户 → 上传数据 → 自然语言描述任务 → 一键生成并执行代码！
 
 ---
 
-## 🌐 域名配置（生产环境）
+## 🌐 配置域名（生产环境）
+
+如果你有域名（例如：`btchuro.com`），可以配置 HTTPS 访问。
 
 ### 前置准备
 
-1. 拥有一个域名（例如：`btchuro.com`）
-2. 域名已解析到服务器 IP
-3. 服务器防火墙开放 80、443 端口
+1. ✅ 拥有一个域名
+2. ✅ 域名已解析到服务器 IP（添加 A 记录）
+3. ✅ 服务器防火墙开放 80 和 443 端口
 
-### 自动配置（推荐）
+### 一键配置
 
 ```bash
 # 在服务器上执行（替换你的域名和邮箱）
 bash deploy.sh domain btchuro.com your-email@example.com
 ```
 
-这个脚本会自动：
+这会自动：
 - ✅ 安装 Nginx
-- ✅ 配置反向代理
+- ✅ 配置反向代理（前端 `/` → `localhost:3000`，后端 `/api/` → `localhost:8000`）
 - ✅ 申请免费 SSL 证书（Let's Encrypt）
 - ✅ 配置 HTTPS 自动重定向
 
-### 手动配置
-
-#### 1. 安装 Nginx 和 Certbot
+### 部署到域名
 
 ```bash
-sudo apt update
-sudo apt install -y nginx certbot python3-certbot-nginx
-```
-
-#### 2. 创建 Nginx 配置
-
-```bash
-sudo nano /etc/nginx/sites-available/llm-data-lab
-```
-
-粘贴以下内容（替换 `your-domain.com`）：
-
-```nginx
-server {
-    listen 80;
-    server_name your-domain.com www.your-domain.com;
-    
-    client_max_body_size 100M;
-    
-    # 前端
-    location / {
-        proxy_pass http://localhost:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-    }
-    
-    # 后端 API
-    location /api/ {
-        rewrite ^/api/(.*) /$1 break;
-        proxy_pass http://localhost:8000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-    
-    # API 文档
-    location /docs {
-        proxy_pass http://localhost:8000/docs;
-    }
-}
-```
-
-#### 3. 启用配置并申请 SSL
-
-```bash
-# 启用配置
-sudo ln -s /etc/nginx/sites-available/llm-data-lab /etc/nginx/sites-enabled/
-sudo nginx -t && sudo systemctl restart nginx
-
-# 申请免费 SSL 证书
-sudo certbot --nginx -d your-domain.com -d www.your-domain.com
-```
-
-#### 4. 更新应用配置
-
-```bash
-# 编辑 docker-compose.prod.yml
-nano docker-compose.prod.yml
-```
-
-修改 API 地址为你的域名：
-```yaml
-services:
-  frontend:
-    environment:
-      - NEXT_PUBLIC_API_BASE_URL=https://your-domain.com/api
-```
-
-#### 5. 重新部署
-
-```bash
+# 中国服务器 + 生产环境
 bash deploy.sh start cn prod
+
+# 国外服务器 + 生产环境
+bash deploy.sh start prod
 ```
+
+### 访问
+
+现在可以通过域名访问：
+- **前端**：https://btchuro.com
+- **后端 API 文档**：https://btchuro.com/docs
 
 ---
 
@@ -229,12 +109,10 @@ bash deploy.sh start cn prod
 # 查看服务状态
 docker-compose ps
 
-# 查看日志（实时）
-docker-compose logs -f
-
-# 查看特定服务日志
-docker-compose logs -f backend
-docker-compose logs -f frontend
+# 查看日志
+docker-compose logs -f              # 所有服务
+docker-compose logs -f backend      # 只看后端
+docker-compose logs -f frontend     # 只看前端
 
 # 重启服务
 docker-compose restart
@@ -242,31 +120,45 @@ docker-compose restart
 # 停止服务
 docker-compose down
 
-# 完全清理重建
-docker-compose down -v
+# 更新代码并重新部署
+git pull origin main
 bash deploy.sh start cn prod
 ```
 
 ---
 
-## 🛠️ 统一部署工具
+## 🛠️ deploy.sh 使用指南
 
-项目提供一个 **deploy.sh** 脚本，包含所有部署功能：
+所有部署操作都通过一个脚本完成：
+
+### 部署应用
 
 ```bash
-# 📦 部署应用
-bash deploy.sh start              # 本地/国外服务器
-bash deploy.sh start cn           # 中国服务器（镜像加速）
-bash deploy.sh start prod         # 生产环境（使用域名）
+bash deploy.sh start              # 本地/国外，开发测试
+bash deploy.sh start cn           # 中国服务器，使用镜像加速
+bash deploy.sh start prod         # 生产环境，使用域名访问
 bash deploy.sh start cn prod      # 中国 + 生产（推荐）
+```
 
-# 🌐 配置域名
+### 配置域名
+
+```bash
+bash deploy.sh domain <域名> <邮箱>
+# 示例：
 bash deploy.sh domain btchuro.com your-email@example.com
+```
 
-# 🔧 修复配置
+### 修复配置
+
+```bash
 bash deploy.sh fix-env
+# 自动生成 JWT_SECRET_KEY
+# 验证 .env 文件格式
+```
 
-# 📖 查看帮助
+### 查看帮助
+
+```bash
 bash deploy.sh help
 ```
 
@@ -281,18 +173,18 @@ bash deploy.sh help
 Access to fetch at 'http://localhost:8000/auth/register' has been blocked by CORS policy
 ```
 
-**原因**：前端 API 地址配置错误
+**原因**：前端 API 地址配置错误，或未使用生产配置
 
 **解决方案**：
 ```bash
-# 方式 1：使用生产配置部署
+# 确保使用 prod 参数部署
 bash deploy.sh start cn prod
 
-# 方式 2：手动设置环境变量
-export NEXT_PUBLIC_API_BASE_URL=https://your-domain.com/api
-docker-compose down
-docker-compose build frontend
-docker-compose up -d
+# 验证 API 地址
+docker-compose exec frontend env | grep API_BASE_URL
+# 应该显示：NEXT_PUBLIC_API_BASE_URL=https://btchuro.com/api
+
+# 浏览器清除缓存后重试
 ```
 
 ### 2. 后端容器启动失败
@@ -309,29 +201,54 @@ container llm-data-lab-backend is unhealthy
 
 **解决方案**：
 ```bash
-# 自动修复
+# 自动修复配置
 bash deploy.sh fix-env
 
-# 查看日志
+# 查看详细错误
 docker-compose logs backend
 
-# 查看详细诊断
-bash diagnose.sh
+# 查看环境变量
+cat backend/.env | grep -E "JWT_SECRET_KEY|OPENAI_API_KEY"
 ```
 
 ### 3. Docker 构建速度慢
 
-**症状**：apt-get update 或 pip install 耗时很长
+**症状**：apt-get update 或 pip install 耗时很长（10+ 分钟）
 
 **解决方案**：
 ```bash
-# 🇨🇳 中国服务器：使用国内镜像源
+# 🇨🇳 中国服务器：使用 cn 参数启用镜像加速
 bash deploy.sh start cn
 
-# 这会使用腾讯云镜像，构建速度提升 70%
+# 构建时间从 15-20 分钟降至 5-7 分钟（提升 70%）
 ```
 
-### 4. Git 同步冲突
+### 4. 域名无法访问
+
+**症状**：浏览器无法打开域名
+
+**检查清单**：
+```bash
+# 1. 检查域名解析
+ping btchuro.com
+# 应该显示你的服务器 IP
+
+# 2. 检查 Nginx 状态
+sudo systemctl status nginx
+
+# 3. 检查防火墙
+sudo ufw status
+# 应该允许 80 和 443 端口
+
+# 4. 检查 Docker 容器
+docker-compose ps
+# 应该显示 backend 和 frontend 都在运行
+
+# 5. 查看 Nginx 日志
+sudo tail -f /var/log/nginx/error.log
+```
+
+### 5. Git 同步冲突
 
 **症状**：
 ```
@@ -344,34 +261,60 @@ error: Your local changes would be overwritten by merge
 cd ~/llm-data-lab
 git fetch origin
 git reset --hard origin/main
+
+# 注意：这不会影响 backend/.env 文件和 Docker 数据卷
 ```
 
 ---
 
-## 📦 数据分析能力
+## 📖 功能说明
 
-后端已预装常用科研分析库：
+### 功能亮点
+
+- **多模型联动**：支持 OpenAI、Anthropic、DeepSeek、Qwen、SiliconFlow 等多个 LLM
+- **一键执行**：LLM 生成的 Python 代码自动在沙箱中运行，输出结果和图表
+- **数据工作台**：集成数据上传、模型选择、代码编辑、执行结果浏览
+- **智能协作**：支持与 LLM 对话，自动生成代码补丁
+- **历史留存**：所有任务自动归档，可随时查看代码、结果和附件
+- **多用户隔离**：支持用户注册登录，数据完全隔离
+- **凭证管理**：API Key 加密存储，多设备自动同步
+
+### 预装的数据分析库
+
 - **数据处理**：pandas, numpy
 - **可视化**：matplotlib, seaborn, plotly
 - **统计建模**：scipy, statsmodels, lifelines
 - **机器学习**：scikit-learn, shap, prophet
-- **贝叶斯与概率建模**：pymc, arviz
-- **NLP 与文本处理**：nltk, spacy
+- **贝叶斯建模**：pymc, arviz
+- **文本处理**：nltk, spacy
 
-可根据需求在 `backend/pyproject.toml` 中扩展。
+---
+
+## 🏗️ 项目结构
+
+```
+llm-data-lab/
+├── backend/              # FastAPI 后端
+│   ├── api/              # REST API 接口
+│   ├── llm_adapters/     # LLM 提供商适配器
+│   ├── sandbox/          # 代码执行沙箱
+│   ├── services/         # 业务逻辑层
+│   ├── models/           # 数据库模型
+│   └── main.py           # 应用入口
+├── frontend/             # Next.js 前端
+│   ├── app/              # 页面路由
+│   ├── components/       # UI 组件
+│   └── lib/              # API 封装
+├── prompts/              # LLM 提示词模板
+├── deploy.sh             # 统一部署工具
+└── README.md             # 本文档
+```
 
 ---
 
 ## 🔒 安全配置
 
-### JWT 密钥生成
-
-```bash
-# 生成 64 字符的随机密钥
-openssl rand -hex 32
-```
-
-### CORS 配置（生产环境）
+### 生产环境 CORS 配置（推荐）
 
 编辑 `backend/main.py`，将：
 ```python
@@ -381,10 +324,49 @@ allow_origins=["*"],
 改为具体域名：
 ```python
 allow_origins=[
-    "https://your-domain.com",
-    "https://www.your-domain.com",
+    "https://btchuro.com",
+    "https://www.btchuro.com",
 ],
 ```
+
+然后重新部署：
+```bash
+bash deploy.sh start cn prod
+```
+
+### 腾讯云防火墙配置
+
+在腾讯云控制台：
+1. 进入**云服务器** → 选择服务器 → **安全组**
+2. 添加入站规则：
+   - TCP:80（HTTP）
+   - TCP:443（HTTPS）
+
+---
+
+## 🌍 镜像源说明
+
+### 为什么要使用镜像源？
+
+在中国服务器上构建 Docker 镜像时：
+- ❌ 使用官方源：15-20 分钟
+- ✅ 使用腾讯云镜像：5-7 分钟（**提升 70%**）
+
+### 如何使用？
+
+```bash
+# 中国服务器：添加 cn 参数
+bash deploy.sh start cn
+
+# 国外服务器：不添加 cn 参数
+bash deploy.sh start
+```
+
+### 支持的镜像源
+
+- **腾讯云**（默认）：`mirrors.cloud.tencent.com`
+- **阿里云**：修改 `docker-compose.cn.yml` 中的镜像地址
+- **官方源**：不使用 `cn` 参数
 
 ---
 
@@ -392,85 +374,32 @@ allow_origins=[
 
 ### 本地开发
 ```
-浏览器 → http://localhost:3000 (前端) → http://localhost:8000 (后端)
+浏览器 → http://localhost:3000 (前端)
+            ↓
+          http://localhost:8000 (后端)
 ```
 
-### 生产环境
+### 生产环境（使用域名）
 ```
-浏览器 → https://your-domain.com (Nginx)
-            ├─→ / → localhost:3000 (前端)
-            └─→ /api/ → localhost:8000 (后端)
-```
-
----
-
-## 🚢 完整部署流程（生产环境）
-
-### 1. 准备工作
-
-```bash
-# 克隆项目
-git clone https://github.com/Stefansong/llm-data-lab.git
-cd llm-data-lab
+浏览器 → https://btchuro.com (Nginx)
+            ↓
+         ┌──┴──┐
+         ↓     ↓
+    前端 /    后端 /api/
+  (3000)      (8000)
 ```
 
-### 2. 配置环境变量
-
-```bash
-# 使用自动修复脚本
-bash deploy.sh fix-env
-
-# 或手动配置
-cp backend/.env.example backend/.env
-nano backend/.env
-# 填入：
-# - JWT_SECRET_KEY=<openssl rand -hex 32 生成>
-# - OPENAI_API_KEY=sk-your-key
-```
-
-### 3. 配置域名和 SSL（如有域名）
-
-```bash
-# 替换为你的域名和邮箱
-bash deploy.sh domain your-domain.com your-email@example.com
-```
-
-### 4. 部署应用
-
-```bash
-# 🇨🇳 中国服务器（使用腾讯云镜像 + 域名）
-bash deploy.sh start cn prod
-
-# 🌍 国外服务器（使用官方源 + 域名）
-bash deploy.sh start prod
-
-# 本地测试（不使用域名）
-bash deploy.sh start cn
-```
-
-### 5. 验证部署
-
-```bash
-# 检查容器状态
-docker-compose ps
-# 应该显示：
-# llm-data-lab-backend   healthy
-# llm-data-lab-frontend  running
-
-# 检查前端 API 配置
-docker-compose exec frontend env | grep API_BASE_URL
-
-# 测试 API
-curl https://your-domain.com/api/health
-# 应该返回：{"status":"ok"}
-
-# 浏览器访问
-# https://your-domain.com
-```
+**访问示例**：
+- `https://btchuro.com/` → 前端主页
+- `https://btchuro.com/workspace` → 工作台
+- `https://btchuro.com/api/auth/login` → 后端 API
+- `https://btchuro.com/docs` → API 文档
 
 ---
 
 ## 🔄 更新部署
+
+当代码更新后：
 
 ```bash
 # 拉取最新代码
@@ -479,135 +408,8 @@ git pull origin main
 # 重新部署
 bash deploy.sh start cn prod
 
-# 或手动
-docker-compose -f docker-compose.yml -f docker-compose.cn.yml -f docker-compose.prod.yml down
-docker-compose -f docker-compose.yml -f docker-compose.cn.yml -f docker-compose.prod.yml build
-docker-compose -f docker-compose.yml -f docker-compose.cn.yml -f docker-compose.prod.yml up -d
-```
-
----
-
-## 🌍 镜像源配置
-
-### 中国部署（推荐使用镜像加速）
-
-项目已配置腾讯云镜像源，构建速度提升 **70%**：
-
-```bash
-# 使用 cn 参数启用镜像加速
-bash deploy.sh start cn
-```
-
-### 国外部署
-
-```bash
-# 不带 cn 参数，使用官方源
-bash deploy.sh start
-```
-
-### 其他镜像源
-
-如需使用阿里云或其他镜像源，手动指定构建参数：
-
-```bash
-docker-compose build \
-  --build-arg DEBIAN_MIRROR=mirrors.aliyun.com \
-  --build-arg PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/ \
-  --build-arg NPM_REGISTRY=https://registry.npmmirror.com/
-```
-
----
-
-## 📖 API 文档
-
-启动服务后，访问：
-- **Swagger UI**：http://localhost:8000/docs
-- **ReDoc**：http://localhost:8000/redoc
-- **OpenAPI JSON**：http://localhost:8000/openapi.json
-
----
-
-## 🔧 配置说明
-
-### 环境变量优先级
-
-```
-1. docker-compose.prod.yml（生产环境覆盖）
-2. docker-compose.cn.yml（中国镜像源覆盖）
-3. docker-compose.yml（基础配置）
-4. backend/.env（本地配置文件）
-```
-
-### 部署模式对照
-
-| 模式 | 命令 | API 地址 | 镜像源 |
-|-----|------|---------|--------|
-| 本地开发 | `docker-compose up` | `http://localhost:8000` | 官方源 |
-| 中国测试 | `bash deploy.sh start cn` | `http://backend:8000` | 腾讯云 |
-| 生产环境 | `bash deploy.sh start cn prod` | `https://your-domain.com/api` | 腾讯云 |
-
----
-
-## 💡 最佳实践
-
-### 开发阶段
-- ✅ 使用本地开发环境（`npm run dev` + `uvicorn --reload`）
-- ✅ 代码提交前先本地测试
-
-### 测试阶段
-- ✅ 使用 Docker Compose 部署
-- ✅ 使用 `bash deploy.sh start cn` 快速构建
-
-### 生产阶段
-- ✅ 配置域名和 SSL 证书
-- ✅ 使用 `bash deploy.sh start cn prod` 部署
-- ✅ 配置具体的 CORS 域名（不使用 `allow_origins=["*"]`）
-- ✅ 定期备份数据库和上传文件
-- ✅ 监控服务状态和日志
-
----
-
-## 🆘 故障排查
-
-### 查看日志
-
-```bash
-# 所有服务日志
+# 查看日志
 docker-compose logs -f
-
-# 只看后端
-docker-compose logs -f backend
-
-# 只看前端
-docker-compose logs -f frontend
-
-# Nginx 日志（如果配置了域名）
-sudo tail -f /var/log/nginx/error.log
-```
-
-### 诊断工具
-
-```bash
-# 全面诊断
-bash diagnose.sh
-
-# 这会检查：
-# - 配置文件完整性
-# - 环境变量设置
-# - Docker 容器状态
-# - 端口占用情况
-# - 服务健康状态
-```
-
-### 重置部署
-
-```bash
-# 完全清理
-docker-compose down -v
-docker system prune -f
-
-# 重新部署
-bash deploy.sh start cn prod
 ```
 
 ---
@@ -623,9 +425,197 @@ bash deploy.sh start cn prod
 
 ---
 
+## 🆘 故障排查
+
+### 查看日志
+
+```bash
+# 实时查看所有日志
+docker-compose logs -f
+
+# 只看后端日志
+docker-compose logs -f backend
+
+# 只看前端日志
+docker-compose logs -f frontend
+
+# 查看 Nginx 日志（如果配置了域名）
+sudo tail -f /var/log/nginx/error.log
+```
+
+### 检查容器状态
+
+```bash
+# 查看容器运行状态
+docker-compose ps
+
+# 应该显示：
+# NAME                   STATUS
+# llm-data-lab-backend   Up (healthy)
+# llm-data-lab-frontend  Up
+```
+
+### 进入容器调试
+
+```bash
+# 进入后端容器
+docker-compose exec backend bash
+
+# 查看环境变量
+env | grep -E "JWT|OPENAI|DATABASE"
+
+# 退出
+exit
+```
+
+### 完全重置
+
+```bash
+# 停止并删除所有容器和数据卷
+docker-compose down -v
+
+# 清理 Docker 缓存
+docker system prune -f
+
+# 重新部署
+bash deploy.sh start cn prod
+```
+
+---
+
+## 🎯 完整部署示例（btchuro.com）
+
+假设你要部署到域名 `btchuro.com`，在**腾讯云服务器**上完整流程：
+
+```bash
+# 1. 克隆项目
+git clone https://github.com/Stefansong/llm-data-lab.git
+cd llm-data-lab
+
+# 2. 配置环境变量
+bash deploy.sh fix-env
+nano backend/.env
+# 填入：OPENAI_API_KEY=sk-your-actual-key
+
+# 3. 配置域名和 SSL（替换邮箱）
+bash deploy.sh domain btchuro.com your-email@example.com
+
+# 4. 部署应用
+bash deploy.sh start cn prod
+
+# 5. 验证
+docker-compose ps
+docker-compose exec frontend env | grep API_BASE_URL
+# 应该显示：NEXT_PUBLIC_API_BASE_URL=https://btchuro.com/api
+
+# 6. 访问
+# 浏览器打开：https://btchuro.com
+```
+
+完成！现在可以使用了。🎉
+
+---
+
+## 💡 高级配置
+
+### 使用 PostgreSQL（生产推荐）
+
+编辑 `backend/.env`：
+```env
+DATABASE_URL=postgresql+asyncpg://user:password@localhost:5432/llm_data_lab
+```
+
+### 自定义镜像源
+
+编辑 `docker-compose.cn.yml`：
+```yaml
+services:
+  backend:
+    build:
+      args:
+        DEBIAN_MIRROR: "mirrors.aliyun.com"
+        PIP_INDEX_URL: "https://mirrors.aliyun.com/pypi/simple/"
+```
+
+### 配置多个域名
+
+```bash
+# 为多个域名申请证书
+bash deploy.sh domain btchuro.com your-email@example.com
+
+# 然后手动添加其他域名
+sudo certbot --nginx -d api.btchuro.com
+```
+
+---
+
+## 📦 环境变量说明
+
+### 必需配置
+
+| 变量 | 说明 | 示例 |
+|-----|------|------|
+| `JWT_SECRET_KEY` | JWT 签名密钥（≥32字符） | 自动生成 |
+| `OPENAI_API_KEY` | OpenAI API 密钥 | `sk-proj-xxx...` |
+
+### 可选配置
+
+| 变量 | 默认值 | 说明 |
+|-----|--------|------|
+| `DATABASE_URL` | `sqlite+aiosqlite:///./llm_data_lab.db` | 数据库连接 |
+| `ACCESS_TOKEN_EXPIRES_MINUTES` | `43200` (30天) | Token 有效期 |
+| `MAX_CODE_EXECUTION_SECONDS` | `60` | 代码执行超时 |
+| `MAX_CODE_EXECUTION_MEMORY_MB` | `768` | 代码执行内存限制 |
+
+### 其他 LLM 配置
+
+```env
+# Anthropic Claude
+ANTHROPIC_API_KEY=sk-ant-xxx
+
+# DeepSeek
+DEEPSEEK_API_KEY=sk-xxx
+DEEPSEEK_BASE_URL=https://api.deepseek.com
+
+# 通义千问
+DASHSCOPE_API_KEY=sk-xxx
+DASHSCOPE_BASE_URL=https://dashscope.aliyuncs.com
+
+# SiliconFlow
+SILICONFLOW_API_KEY=sk-xxx
+SILICONFLOW_BASE_URL=https://api.siliconflow.cn
+```
+
+---
+
+## 🔐 数据安全
+
+### 文件存储
+
+- **上传的数据集**：`./uploaded_datasets/` （Docker 卷持久化）
+- **生成的图表**：`./analysis_artifacts/` （Docker 卷持久化）
+- **数据库**：`backend-db` Docker 卷
+
+### 备份建议
+
+```bash
+# 备份数据库
+docker-compose exec backend cp /app/db/llm_data_lab.db /app/db/backup.db
+
+# 导出 Docker 卷
+docker run --rm -v llm-data-lab_backend-db:/data -v $(pwd):/backup ubuntu tar czf /backup/backend-db-backup.tar.gz /data
+
+# 备份上传文件和图表
+tar czf data-backup.tar.gz uploaded_datasets/ analysis_artifacts/
+```
+
+---
+
 ## 🤝 贡献
 
-欢迎提交 Issue 和 Pull Request！详见 [CONTRIBUTING.md](./CONTRIBUTING.md)
+欢迎提交 Issue 和 Pull Request！
+
+开发前请阅读：[CONTRIBUTING.md](./CONTRIBUTING.md)
 
 ---
 
@@ -638,8 +628,10 @@ MIT License
 ## 📞 支持
 
 - **GitHub Issues**: https://github.com/Stefansong/llm-data-lab/issues
-- **文档**: 查看本 README 和项目内的注释
+- **主文档**: 本 README
+- **设计文档**: [design.md](./design.md)
 
 ---
 
-**最后更新**：2025-11-05
+**最后更新**：2025-11-05  
+**项目状态**：✅ 生产就绪
