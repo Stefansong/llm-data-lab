@@ -229,8 +229,12 @@ bash deploy-server.sh cn prod
 # 查看服务状态
 docker-compose ps
 
-# 查看日志
+# 查看日志（实时）
 docker-compose logs -f
+
+# 查看特定服务日志
+docker-compose logs -f backend
+docker-compose logs -f frontend
 
 # 重启服务
 docker-compose restart
@@ -241,24 +245,28 @@ docker-compose down
 # 完全清理重建
 docker-compose down -v
 bash deploy-server.sh cn prod
-
-# 诊断问题
-bash diagnose.sh
-
-# 修复配置
-bash fix-env.sh
 ```
 
 ---
 
-## 🛠️ 自动化脚本说明
+## 🛠️ 自动化脚本
+
+项目提供 3 个核心脚本，覆盖所有部署场景：
 
 | 脚本 | 用途 | 使用方法 |
 |-----|------|---------|
-| `deploy-server.sh` | 自动化部署 | `bash deploy-server.sh cn prod` |
-| `setup-domain.sh` | 域名和 SSL 配置 | `bash setup-domain.sh your-domain.com email@example.com` |
-| `fix-env.sh` | 修复环境变量 | `bash fix-env.sh` |
-| `diagnose.sh` | 诊断问题 | `bash diagnose.sh` |
+| `deploy-server.sh` | 一键部署 | `bash deploy-server.sh cn prod` |
+| `setup-domain.sh` | 域名和 SSL 配置 | `bash setup-domain.sh btchuro.com email@example.com` |
+| `fix-env.sh` | 自动修复 .env 配置 | `bash fix-env.sh` |
+
+### deploy-server.sh 参数说明
+
+```bash
+bash deploy-server.sh              # 国外服务器，本地测试
+bash deploy-server.sh cn           # 中国服务器，使用腾讯云镜像
+bash deploy-server.sh prod         # 国外服务器，生产环境（使用域名）
+bash deploy-server.sh cn prod      # 中国服务器，生产环境（推荐）
+```
 
 ---
 
