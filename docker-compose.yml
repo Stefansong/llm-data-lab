@@ -13,29 +13,29 @@ services:
       # 持久化数据存储
       - ./uploaded_datasets:/app/uploaded_datasets
       - ./analysis_artifacts:/app/analysis_artifacts
-      - backend-db:/app
+      - backend-db:/app/db
     environment:
       # 从 .env 文件读取环境变量
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-your-secret-key-change-this}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-change-this-to-a-32-character-secret-key-in-production}
       - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
       - ACCESS_TOKEN_EXPIRES_MINUTES=${ACCESS_TOKEN_EXPIRES_MINUTES:-43200}
       - CREDENTIALS_SECRET_KEY=${CREDENTIALS_SECRET_KEY:-}
-      - DATABASE_URL=${DATABASE_URL:-sqlite:///./llm_data_lab.db}
+      - DATABASE_URL=${DATABASE_URL:-sqlite:///./db/llm_data_lab.db}
       # LLM API Keys
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.openai.com/v1}
-      - OPENAI_DEFAULT_MODELS=${OPENAI_DEFAULT_MODELS:-gpt-4o,gpt-4o-mini}
+      - OPENAI_DEFAULT_MODELS=${OPENAI_DEFAULT_MODELS:-["gpt-4o","gpt-4o-mini","gpt-4.1"]}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
-      - ANTHROPIC_DEFAULT_MODELS=${ANTHROPIC_DEFAULT_MODELS:-claude-3-sonnet-20240229}
+      - ANTHROPIC_DEFAULT_MODELS=${ANTHROPIC_DEFAULT_MODELS:-["claude-3-sonnet-20240229","claude-3-haiku-20240307"]}
       - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
       - DEEPSEEK_BASE_URL=${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
-      - DEEPSEEK_DEFAULT_MODELS=${DEEPSEEK_DEFAULT_MODELS:-deepseek-chat}
+      - DEEPSEEK_DEFAULT_MODELS=${DEEPSEEK_DEFAULT_MODELS:-["deepseek-chat","deepseek-coder"]}
       - DASHSCOPE_API_KEY=${DASHSCOPE_API_KEY:-}
       - DASHSCOPE_BASE_URL=${DASHSCOPE_BASE_URL:-https://dashscope.aliyuncs.com}
-      - DASHSCOPE_DEFAULT_MODELS=${DASHSCOPE_DEFAULT_MODELS:-qwen-max}
+      - QWEN_DEFAULT_MODELS=${QWEN_DEFAULT_MODELS:-["qwen-turbo","qwen-plus","qwen-max"]}
       - SILICONFLOW_API_KEY=${SILICONFLOW_API_KEY:-}
       - SILICONFLOW_BASE_URL=${SILICONFLOW_BASE_URL:-https://api.siliconflow.cn}
-      - SILICONFLOW_DEFAULT_MODELS=${SILICONFLOW_DEFAULT_MODELS:-Qwen/Qwen2.5-7B-Instruct}
+      - SILICONFLOW_DEFAULT_MODELS=${SILICONFLOW_DEFAULT_MODELS:-["siliconflow-chat","siliconflow-coder"]}
       # 执行限制
       - MAX_CODE_EXECUTION_SECONDS=${MAX_CODE_EXECUTION_SECONDS:-60}
       - MAX_CODE_EXECUTION_MEMORY_MB=${MAX_CODE_EXECUTION_MEMORY_MB:-512}

@@ -8,7 +8,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 
 # 安装依赖
-RUN npm ci --only=production
+RUN npm ci
 
 # 阶段 2: 构建应用
 FROM node:18-alpine AS builder
