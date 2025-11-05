@@ -1,0 +1,54 @@
+# Git
+.git
+.gitignore
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Documentation
+*.md
+!README.md
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.venv/
+venv/
+ENV/
+
+# Node.js
+node_modules/
+.next/
+npm-debug.log*
+
+# Database
+*.db
+*.sqlite
+
+# Environment
+.env
+.env.local
+
+# User data
+uploaded_datasets/
+analysis_artifacts/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Logs
+*.log
+
+# Testing
+.coverage
+.pytest_cache/
+
